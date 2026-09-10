@@ -1,0 +1,11 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="128" fill="url(#grad)" />
+  <!-- Lucide Radar icon scaled up -->
+  <path d="M409.6 102.4C366.505 59.3051 313.344 32 256 32C198.656 32 145.495 59.3051 102.4 102.4M358.4 153.6C329.805 125.005 294.672 106.667 256 106.667C217.328 106.667 182.195 125.005 153.6 153.6M307.2 204.8C292.105 189.705 274.672 181.333 256 181.333C237.328 181.333 219.895 189.705 204.8 204.8M256 256C273.673 256 288 270.327 288 288C288 305.673 273.673 320 256 320C238.327 320 224 305.673 224 288C224 270.327 238.327 256 256 256ZM256 288L480 288" stroke="white" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
+  <defs>
+    <linearGradient id="grad" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#06b6d4" /> <!-- cyan-500 -->
+      <stop offset="1" stop-color="#4f46e5" /> <!-- indigo-600 -->
+    </linearGradient>
+  </defs>
+</svg>
