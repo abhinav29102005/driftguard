@@ -6,11 +6,12 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   Radar, LayoutDashboard, AlertTriangle, BarChart3,
-  ClipboardList, PanelLeftClose, PanelLeft,
+  ClipboardList, PanelLeftClose, PanelLeft, FlaskConical,
 } from "lucide-react";
 
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Overview" },
+  { href: "/dashboard/pipeline", icon: FlaskConical, label: "Live Pipeline" },
   { href: "/dashboard#flagged", icon: AlertTriangle, label: "Flagged Parts" },
   { href: "/dashboard/lots", icon: BarChart3, label: "Lot Analytics" },
   { href: "/dashboard#overrides", icon: ClipboardList, label: "Override Log" },
@@ -44,10 +45,11 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1">
         {navItems.map((item) => {
+          const cleanHref = item.href.split("#")[0];
           const isActive =
             item.href === "/dashboard"
               ? pathname === "/dashboard"
-              : pathname.startsWith(item.href.split("#")[0]) && item.href !== "/dashboard";
+              : pathname.startsWith(cleanHref) && cleanHref !== "/dashboard";
           return (
             <Link
               key={item.href}

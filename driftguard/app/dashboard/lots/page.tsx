@@ -1,17 +1,43 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getLots, getAllParts } from "@/lib/mockData";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { DriftTrend } from "@/components/charts/DriftTrend";
-import { BarChart3, Cpu, AlertTriangle } from "lucide-react";
+import { BarChart3, Cpu, AlertTriangle, Wifi, WifiOff, Loader2 } from "lucide-react";
+import type { Part, Lot } from "@/lib/types";
+import type { PipelineResults } from "@/lib/api";
 
 export default function LotAnalytics() {
   const router = useRouter();
-  const lots = getLots();
-  const allParts = getAllParts();
+
+  const [lots, setLots] = useState<Lot[]>([]);
+  const [allParts, setAllParts] = useState<Part[]>([]);
+  const [dataSource, setDataSource] = useState<"loading" | "api" | "error">("loading");
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchData() {
+      try {
+        const res = await fetch("/api/results");
+        if (!res.ok) throw new Error("API error");
+        const data: PipelineResults = await res.json();
+        if (cancelled) return;
+        if (data.parts && data.lots) {
+          setLots(data.lots);
+          setAllParts(data.parts);
+          setDataSource("api");
+        } else {
+          setDataSource("error");
+        }
+      } catch {
+        if (!cancelled) setDataSource("error");
+      }
+    }
+    fetchData();
+    return () => { cancelled = true; };
+  }, []);
 
   const totalParts = allParts.length;
   const totalFlagged = allParts.filter((p) => p.status !== "normal").length;
@@ -25,9 +51,24 @@ export default function LotAnalytics() {
           <BarChart3 className="h-6 w-6 text-cyan-400" />
           Lot Analytics
         </h1>
-        <p className="text-neutral-500 text-sm mt-1">
-          Overview of all screening lots and their drift characteristics
-        </p>
+        <div className="flex items-center gap-3 mt-1">
+          <p className="text-neutral-500 text-sm">
+            Overview of all screening lots and their drift characteristics
+          </p>
+          {dataSource === "loading" ? (
+            <span className="flex items-center gap-1 text-neutral-500 text-xs">
+              <Loader2 className="h-3 w-3 animate-spin" />
+            </span>
+          ) : dataSource === "api" ? (
+            <span className="flex items-center gap-1 text-emerald-400 text-xs">
+              <Wifi className="h-3 w-3" /> Live
+            </span>
+          ) : (
+            <span className="flex items-center gap-1 text-amber-400 text-xs">
+              <WifiOff className="h-3 w-3" /> Demo
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Summary Stats */}

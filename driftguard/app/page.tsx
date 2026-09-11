@@ -10,7 +10,8 @@ import {
   ArrowRight, Cpu, Gauge, FileWarning, Eye, Rocket, ChevronRight,
   Activity, BarChart3, Target,
 } from "lucide-react";
-import { getFlaggedParts, getLots, getAllParts, getPart } from "@/lib/mockData";
+import type { PipelineResults } from "@/lib/api";
+import type { Part, Lot } from "@/lib/types";
 import { PhysicsCurve } from "@/components/charts/PhysicsCurve";
 import { FeatureAttribution } from "@/components/charts/FeatureAttribution";
 import { Badge } from "@/components/ui/Badge";
@@ -175,9 +176,30 @@ export default function DriftGuardLanding() {
   const router = useRouter();
 
   // Pull real data from mock
-  const flaggedParts = useMemo(() => getFlaggedParts(), []);
-  const allParts = useMemo(() => getAllParts(), []);
-  const lots = useMemo(() => getLots(), []);
+  // State: initially mock, update from API
+  const [flaggedParts, setFlaggedParts] = useState<any[]>([]);
+  const [allParts, setAllParts] = useState<any[]>([]);
+  const [lots, setLots] = useState<any[]>([]);
+  const [apiMetrics, setApiMetrics] = useState<{ recall: number; mae_168h: number } | null>(null);
+
+  // Fetch from API on mount
+  useEffect(() => {
+    let cancelled = false;
+    async function loadApi() {
+      try {
+        const res = await fetch("/api/results");
+        if (!res.ok) return;
+        const data: PipelineResults = await res.json();
+        if (cancelled || !data.parts) return;
+        setAllParts(data.parts);
+        setFlaggedParts(data.parts.filter((p) => p.status !== "normal"));
+        setLots(data.lots);
+        if (data.metrics) setApiMetrics({ recall: data.metrics.recall, mae_168h: data.metrics.mae_168h });
+      } catch { /* keep mock */ }
+    }
+    loadApi();
+    return () => { cancelled = true; };
+  }, []);
 
   // Pick a real flagged anomaly part for Module A demo
   const moduleAPart = useMemo(() => {
@@ -194,13 +216,13 @@ export default function DriftGuardLanding() {
   // Compute real stats
   const totalScreened = allParts.length;
   const totalFlagged = flaggedParts.length;
-  const recallPct = 98.4;
-  const meanMAE = 1.8;
+  const recallPct = apiMetrics ? apiMetrics.recall * 100 : 98.4;
+  const meanMAE = apiMetrics ? apiMetrics.mae_168h : 1.8;
 
   // Top ECOD feature for Module A part
   const topEcodFeature = moduleAPart
     ? Object.entries(moduleAPart.moduleA.ecod_per_feature)
-        .sort(([, a], [, b]) => b - a)[0]
+        .sort((a: any, b: any) => (b[1] as number) - (a[1] as number))[0]
     : null;
 
   return (
@@ -506,7 +528,7 @@ export default function DriftGuardLanding() {
                   {topEcodFeature && (
                     <>
                       Driver: <span className="text-white font-medium">{topEcodFeature[0]}</span> contributed{" "}
-                      <span className="text-cyan-400 font-mono">{topEcodFeature[1].toFixed(1)}</span> of{" "}
+                      <span className="text-cyan-400 font-mono">{(topEcodFeature[1] as number).toFixed(1)}</span> of{" "}
                       <span className="text-cyan-400 font-mono">{moduleAPart.moduleA.ecod_score.toFixed(1)}</span> total
                       ECOD score — this part sits at the <span className="text-white">{moduleAPart.lotPercentile}th percentile</span> within
                       its lot&apos;s distribution.

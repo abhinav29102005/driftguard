@@ -1,26 +1,63 @@
 "use client";
 
-import React, { useState, use } from "react";
+import React, { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getPart, getOverridesForPart } from "@/lib/mockData";
+import type { Part, OverrideEntry } from "@/lib/types";
+import type { PipelineResults } from "@/lib/api";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { toast } from "sonner";
 import { PhysicsCurve } from "@/components/charts/PhysicsCurve";
 import { FeatureAttribution } from "@/components/charts/FeatureAttribution";
 import { RiskGauge } from "@/components/dashboard/RiskGauge";
 import { OverrideLog } from "@/components/dashboard/OverrideLog";
-import { ArrowLeft, Zap, Radar, Blend, FlaskConical, TrendingUp } from "lucide-react";
-import type { OverrideEntry } from "@/lib/types";
+import {
+  ArrowLeft, Radar, Zap, TrendingUp, FlaskConical, Blend,
+  Wifi, WifiOff,
+} from "lucide-react";
 
-export default function PartDrillDown({ params }: { params: Promise<{ id: string }> }) {
+interface PartPageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default function PartPage({ params }: PartPageProps) {
   const { id } = use(params);
   const router = useRouter();
-  const part = getPart(id);
-  const existingOverrides = getOverridesForPart(id);
-  const [overrides, setOverrides] = useState<OverrideEntry[]>(existingOverrides);
+
+  // Try loading from API, fallback to mock
+  const [part, setPart] = useState<Part | undefined>(undefined);
+  const [dataSource, setDataSource] = useState<"api" | "mock">("mock");
+  const existingOverrides: any[] = [];
+  const [overrides, setOverrides] = useState<OverrideEntry[]>([]);
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchData() {
+      try {
+        const res = await fetch("/api/results");
+        if (!res.ok) throw new Error("API error");
+        const data: PipelineResults = await res.json();
+        if (cancelled) return;
+        const apiPart = data.parts?.find((p) => p.id === id);
+        if (apiPart) {
+          setPart(apiPart);
+          setDataSource("api");
+          // Also load overrides from API data
+          const apiOverrides = (data.overrides || []).filter((o) => o.partId === id);
+          if (apiOverrides.length > 0) {
+            setOverrides(apiOverrides);
+          }
+        }
+      } catch {
+        // Keep mock data
+      }
+    }
+    fetchData();
+    return () => { cancelled = true; };
+  }, [id]);
 
   if (!part) {
     return (
@@ -49,6 +86,7 @@ export default function PartDrillDown({ params }: { params: Promise<{ id: string
       setOverrides([entry, ...overrides]);
       setReason("");
       setSubmitting(false);
+      toast.success(`Override logged for Part #${part!.id}`, { description: `Action: ${action.toUpperCase()}` });
     }, 600);
   }
 
@@ -74,6 +112,15 @@ export default function PartDrillDown({ params }: { params: Promise<{ id: string
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-white">Part #{part.id}</h1>
               <Badge status={part.status} />
+              {dataSource === "api" ? (
+                <span className="flex items-center gap-1 text-emerald-400 text-xs">
+                  <Wifi className="h-3 w-3" /> ML Pipeline
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 text-amber-400 text-xs">
+                  <WifiOff className="h-3 w-3" /> Demo
+                </span>
+              )}
             </div>
             <p className="text-neutral-500 text-sm mt-1">
               {part.lotId} · {part.lotPercentile}th percentile in lot

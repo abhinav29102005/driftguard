@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/Badge";
+import { ExportCsvButton } from "./ExportCsvButton";
 import { ArrowUpDown, ChevronRight } from "lucide-react";
 import type { Part } from "@/lib/types";
 
@@ -59,12 +60,15 @@ export function FlaggedPartsTable({ parts, showAll = false }: FlaggedPartsTableP
           {showAllParts ? "All Parts" : "Flagged Parts"}
           <span className="text-neutral-500 text-sm font-normal ml-2">({filtered.length})</span>
         </h3>
-        <button
-          onClick={() => setShowAllParts(!showAllParts)}
+        <div className="flex items-center gap-4">
+          <ExportCsvButton parts={filtered} />
+          <button
+            onClick={() => setShowAllParts(!showAllParts)}
           className="text-xs text-cyan-400 hover:text-cyan-300 transition"
         >
           {showAllParts ? "Show flagged only" : "Show all"}
-        </button>
+          </button>
+        </div>
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-white/10">
