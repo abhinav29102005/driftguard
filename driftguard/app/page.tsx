@@ -9,7 +9,7 @@ import {
   Brain, Radar, TrendingUp, ShieldCheck, GitBranch, LayoutDashboard,
   AlertTriangle, CheckCircle2, Zap, Database, FlaskConical, Sigma,
   ArrowRight, Cpu, Gauge, FileWarning, Eye, Rocket, ChevronRight,
-  Activity, BarChart3, Target,
+  Activity, BarChart3, Target, Code2,
 } from "lucide-react";
 import type { PipelineResults } from "@/lib/api";
 import type { Part, Lot } from "@/lib/types";
@@ -240,6 +240,9 @@ export default function DriftGuardLanding() {
             <a href="#modules" className="hover:text-white transition">Modules</a>
             <a href="#pipeline" className="hover:text-white transition">Pipeline</a>
             <a href="#detection" className="hover:text-white transition">Live Detection</a>
+            <a href="#math" className="hover:text-white transition">Math</a>
+            <a href="#reasoning" className="hover:text-white transition">Reasoning</a>
+            <a href="#resources" className="hover:text-white transition">Data</a>
             <a href="#tech" className="hover:text-white transition">Tech Stack</a>
           </div>
           <Link
@@ -281,9 +284,7 @@ export default function DriftGuardLanding() {
             transition={{ duration: 0.6, delay: 0.3 }}
             className="mt-6 text-lg text-neutral-400 max-w-2xl mx-auto leading-relaxed"
           >
-            AI-driven lot-relative anomaly detection and physics-informed drift forecasting
-            for ESS burn-in screening — explains every flag to QA engineers with
-            per-feature attribution and Arrhenius trajectory overlays.
+            In high-reliability space payloads, latent defects pass static datasheet limits but drift anomalously over time. These "walking wounded" components escape standard screening, leading to catastrophic field failures in orbit.
           </motion.p>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -623,6 +624,111 @@ export default function DriftGuardLanding() {
             View full drill-down for this part
             <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
           </Link>
+        </div>
+      </section>
+
+      {/* ──── Math & Methodology ──── */}
+      <section id="math" className="border-t border-white/10 bg-neutral-950 py-20">
+        <div className="mx-auto max-w-6xl px-6">
+          <h2 className="text-2xl md:text-3xl font-bold text-white text-center mb-4">Mathematical Foundations</h2>
+          <p className="text-neutral-500 text-center mb-12 max-w-2xl mx-auto">
+            The core logic driving DriftGuard's anomaly scoring and drift prediction.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6 hover:border-white/20 transition">
+              <h3 className="text-lg font-semibold text-white mb-2">1. Lot-Relative Normalization (MAD)</h3>
+              <p className="text-sm text-neutral-400 mb-4">Instead of standard deviation, which is ruined by large outliers, we use Median Absolute Deviation for dynamic baselining.</p>
+              <div className="bg-black/50 p-4 rounded-lg font-mono text-sm text-emerald-400 overflow-x-auto whitespace-pre">
+                z_robust = 0.6745 * (x - median) / MAD
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6 hover:border-white/20 transition">
+              <h3 className="text-lg font-semibold text-white mb-2">2. ECOD Tail Probability</h3>
+              <p className="text-sm text-neutral-400 mb-4">Empirical Cumulative Distribution Outlier Detection calculates the exact tail probability of seeing a sensor value this extreme.</p>
+              <div className="bg-black/50 p-4 rounded-lg font-mono text-sm text-cyan-400 overflow-x-auto whitespace-pre">
+                F_left(x) = (1/n) * Σ I[xi &lt;= x]
+                O_j(x) = -log(min(F_left, F_right))
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6 hover:border-white/20 transition">
+              <h3 className="text-lg font-semibold text-white mb-2">3. Physics Baseline (Arrhenius)</h3>
+              <p className="text-sm text-neutral-400 mb-4">Using 0h and 24h readings, we solve for the physical drift exponent to project the 168h trajectory based on Arrhenius aging principles.</p>
+              <div className="bg-black/50 p-4 rounded-lg font-mono text-sm text-purple-400 overflow-x-auto whitespace-pre">
+                n = [ln(V_24h) - ln(V_0h)] / [ln(24)]
+                I_168h = I_0 * (168 / 24)^n
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6 hover:border-white/20 transition">
+              <h3 className="text-lg font-semibold text-white mb-2">4. Hybrid ML Residual Correction</h3>
+              <p className="text-sm text-neutral-400 mb-4">An XGBoost regressor predicts the difference between the true 168h value and the physics baseline to minimize Mean Absolute Error (MAE).</p>
+              <div className="bg-black/50 p-4 rounded-lg font-mono text-sm text-amber-400 overflow-x-auto whitespace-pre">
+                I_final = I_physics + f_XGB(residuals)
+                Flag if: slope &gt; μ_slope + (k * σ_slope)
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* ──── Architectural Reasoning ──── */}
+      <section id="reasoning" className="border-t border-white/10 bg-neutral-950 py-20">
+        <div className="mx-auto max-w-6xl px-6">
+          <h2 className="text-2xl md:text-3xl font-bold text-white text-center mb-4">Architectural Reasoning</h2>
+          <p className="text-neutral-500 text-center mb-12 max-w-2xl mx-auto">
+            Why we engineered it this way (and why we rejected standard approaches).
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6 hover:border-white/20 transition">
+              <h3 className="text-lg font-semibold text-white mb-2">Why not Deep Learning?</h3>
+              <p className="text-sm text-neutral-400">
+                A massive neural network acts as a black box. If it spits out "REJECT", QA inspectors have no idea why. By separating the unsupervised outlier detection (Module A) from the physics regression (Module B), every single decision is transparent and mathematically explainable.
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6 hover:border-white/20 transition">
+              <h3 className="text-lg font-semibold text-white mb-2">Why IF + ECOD?</h3>
+              <p className="text-sm text-neutral-400">
+                We explicitly rejected LOF (Local Outlier Factor) because its O(n²) complexity degrades in high dimensions (590 sensors). We rejected Elliptic Envelope because it assumes Gaussian data, but leakage current is heavily skewed. Isolation Forest and ECOD handle skewed, high-dimensional data perfectly.
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6 hover:border-white/20 transition">
+              <h3 className="text-lg font-semibold text-white mb-2">Why not Standard Deviation?</h3>
+              <p className="text-sm text-neutral-400">
+                Burn-in lots are small batches. If you have one massive defect (e.g., 500 µA) in a lot, it pulls the Mean average way up and inflates the Standard Deviation, effectively hiding all the smaller, latent anomalies. We use Median Absolute Deviation (MAD) to establish a truly robust baseline.
+              </p>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* ──── Resources & Data ──── */}
+      <section id="resources" className="border-t border-white/10 bg-neutral-950 py-20">
+        <div className="mx-auto max-w-5xl px-6">
+          <h2 className="text-2xl md:text-3xl font-bold text-white text-center mb-10">Data & Resources</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6 text-center hover:border-white/20 transition flex flex-col items-center">
+              <Database className="w-8 h-8 text-rose-500 mb-4" />
+              <h3 className="text-lg font-semibold text-white mb-2">UCI SECOM Dataset</h3>
+              <p className="text-sm text-neutral-400">
+                A highly imbalanced semiconductor manufacturing dataset featuring 590 sensor readings per wafer. We layered time-series burn-in simulations (at 0h, 24h, 96h, 168h) on top of this physical data.
+              </p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6 text-center hover:border-white/20 transition flex flex-col items-center">
+              <Code2 className="w-8 h-8 text-blue-500 mb-4" />
+              <h3 className="text-lg font-semibold text-white mb-2">ISRO PS-26170 Blueprint</h3>
+              <p className="text-sm text-neutral-400">
+                This architecture was engineered specifically to address ISRO's requirement for a dynamic outlier detection system that flags latent defects based on abnormal drift rates.
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 
