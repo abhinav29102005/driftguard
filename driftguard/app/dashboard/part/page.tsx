@@ -33,6 +33,24 @@ export default function PartDrillDown({ params }: { params: Promise<{ id: string
     );
   }
 
+  if (mode === "loading") {
+    return (
+      <div className="flex flex-col items-center justify-center h-[50vh] text-neutral-400 gap-4">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400"></div>
+        <p>Loading part data...</p>
+      </div>
+    );
+  }
+
+  if (mode === "loading") {
+    return (
+      <div className="flex flex-col items-center justify-center h-[50vh] text-neutral-400 gap-4">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400"></div>
+        <p>Loading part data...</p>
+      </div>
+    );
+  }
+
   if (!part) {
     return (
       <div className="flex flex-col items-center justify-center h-[50vh] text-neutral-500 gap-4">
