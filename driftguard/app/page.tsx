@@ -1,5 +1,6 @@
 "use client";
 
+import { checkHealth, getPrecomputedResults } from "@/lib/api";
 import React, { useRef, useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -187,12 +188,11 @@ export default function DriftGuardLanding() {
     let cancelled = false;
     async function loadApi() {
       try {
-        const res = await fetch("/api/results");
-        if (!res.ok) return;
-        const data: PipelineResults = await res.json();
+        const data = await getPrecomputedResults();
+        if (!data) return;
         if (cancelled || !data.parts) return;
         setAllParts(data.parts);
-        setFlaggedParts(data.parts.filter((p) => p.status !== "normal"));
+        setFlaggedParts(data.parts.filter((p: any) => p.status !== "normal"));
         setLots(data.lots);
         if (data.metrics) setApiMetrics({ recall: data.metrics.recall, mae_168h: data.metrics.mae_168h });
       } catch { /* keep mock */ }

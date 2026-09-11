@@ -12,6 +12,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { toast } from "sonner";
+import { runPipeline } from "@/lib/api";
 import { AnomalyScatter } from "@/components/charts/AnomalyScatter";
 import { DriftTrend } from "@/components/charts/DriftTrend";
 import { FlaggedPartsTable } from "@/components/dashboard/FlaggedPartsTable";
@@ -59,20 +60,8 @@ export default function PipelinePage() {
     ];
 
     try {
-      const res = await fetch("/api/pipeline", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ seed, anomaly_rate: anomalyRate }),
-      });
-
+      const data = await runPipeline(seed, anomalyRate);
       stageTimers.forEach(clearTimeout);
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({ error: "Unknown error" }));
-        throw new Error(errData.error || `HTTP ${res.status}`);
-      }
-
-      const data: PipelineResults = await res.json();
       setResults(data);
       setStage("done");
       setElapsed(Math.round((Date.now() - t0) / 100) / 10);
