@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import type { Part, Lot, OverrideEntry } from "./types";
 import type { PipelineResults, PipelineMetrics } from "./api";
-import { runPipeline } from "./api";
+import { runPipeline, getPrecomputedResults } from "./api";
 import { toast } from "sonner";
 
 export type DataSourceMode = "loading" | "static" | "live_results" | "live_pipeline" | "error";
@@ -37,9 +37,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
         data = await runPipeline();
         toast.success(`Pipeline finished in ${data.metrics?.execution_time_seconds.toFixed(1)}s`, { id: "pipeline" });
       } else if (sourceMode === "live_results") {
-        const res = await fetch("/api/results");
-        if (!res.ok) throw new Error("API error");
-        data = await res.json();
+        const results = await getPrecomputedResults();
+        if (!results) throw new Error("API error");
+        data = results;
       } else {
         // static
         const res = await fetch("/results.json");
