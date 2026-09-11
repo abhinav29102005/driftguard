@@ -1,47 +1,32 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useData } from "@/lib/DataContext";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { DriftTrend } from "@/components/charts/DriftTrend";
-import { BarChart3, Cpu, AlertTriangle, Wifi, WifiOff, Loader2 } from "lucide-react";
+import { Loader2, BarChart3, Cpu, AlertTriangle, Wifi, WifiOff } from "lucide-react";
 import type { Part, Lot } from "@/lib/types";
-import type { PipelineResults } from "@/lib/api";
 
 export default function LotAnalytics() {
   const router = useRouter();
 
-  const [lots, setLots] = useState<Lot[]>([]);
-  const [allParts, setAllParts] = useState<Part[]>([]);
-  const [dataSource, setDataSource] = useState<"loading" | "api" | "error">("loading");
-
-  useEffect(() => {
-    let cancelled = false;
-    async function fetchData() {
-      try {
-        const res = await fetch("/api/results");
-        if (!res.ok) throw new Error("API error");
-        const data: PipelineResults = await res.json();
-        if (cancelled) return;
-        if (data.parts && data.lots) {
-          setLots(data.lots);
-          setAllParts(data.parts);
-          setDataSource("api");
-        } else {
-          setDataSource("error");
-        }
-      } catch {
-        if (!cancelled) setDataSource("error");
-      }
-    }
-    fetchData();
-    return () => { cancelled = true; };
-  }, []);
+  const { lots, parts: allParts, mode } = useData();
+  const dataSource = mode;
 
   const totalParts = allParts.length;
   const totalFlagged = allParts.filter((p) => p.status !== "normal").length;
-  const flaggedRate = ((totalFlagged / totalParts) * 100).toFixed(1);
+  const flaggedRate = totalParts > 0 ? ((totalFlagged / totalParts) * 100).toFixed(1) : "0.0";
+
+  if (mode === "loading" || mode === "live_pipeline") {
+    return (
+      <div className="flex flex-col items-center justify-center h-[50vh] text-neutral-500 gap-4">
+        <Loader2 className="w-8 h-8 animate-spin" />
+        <p>Loading lot data...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -55,17 +40,17 @@ export default function LotAnalytics() {
           <p className="text-neutral-500 text-sm">
             Overview of all screening lots and their drift characteristics
           </p>
-          {dataSource === "loading" ? (
+          {dataSource === "loading" || dataSource === "live_pipeline" ? (
             <span className="flex items-center gap-1 text-neutral-500 text-xs">
               <Loader2 className="h-3 w-3 animate-spin" />
             </span>
-          ) : dataSource === "api" ? (
+          ) : dataSource === "live_results" ? (
             <span className="flex items-center gap-1 text-emerald-400 text-xs">
-              <Wifi className="h-3 w-3" /> Live
+              <Wifi className="h-3 w-3" /> Live ML Pipeline
             </span>
           ) : (
             <span className="flex items-center gap-1 text-amber-400 text-xs">
-              <WifiOff className="h-3 w-3" /> Demo
+              <WifiOff className="h-3 w-3" /> Static Demo
             </span>
           )}
         </div>
@@ -113,7 +98,7 @@ export default function LotAnalytics() {
         {lots.map((lot) => (
           <Card
             key={lot.id}
-            className="!p-6 hover:border-cyan-500/20 transition-colors group"
+            className="!p-6 hover:border-cyan-500/20 transition-colors group cursor-pointer"
             onClick={() => router.push(`/dashboard?lot=${lot.id}`)}
           >
             <div className="flex items-center justify-between mb-4">

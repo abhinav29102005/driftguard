@@ -1,74 +1,51 @@
 "use client";
 
-import React, { use, useState, useEffect } from "react";
+import React, { use, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import type { Part, OverrideEntry } from "@/lib/types";
-import type { PipelineResults } from "@/lib/api";
+import { ArrowLeft, CheckCircle2, AlertTriangle, XCircle, Beaker, FileTerminal, Radar, Zap, TrendingUp, FlaskConical, Blend, Wifi, WifiOff } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import { toast } from "sonner";
 import { PhysicsCurve } from "@/components/charts/PhysicsCurve";
 import { FeatureAttribution } from "@/components/charts/FeatureAttribution";
+import { useData } from "@/lib/DataContext";
+import { toast } from "sonner";
 import { RiskGauge } from "@/components/dashboard/RiskGauge";
 import { OverrideLog } from "@/components/dashboard/OverrideLog";
-import {
-  ArrowLeft, Radar, Zap, TrendingUp, FlaskConical, Blend,
-  Wifi, WifiOff,
-} from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import type { OverrideEntry } from "@/lib/types";
 
-interface PartPageProps {
-  params: Promise<{ id: string }>;
-}
-
-export default function PartPage({ params }: PartPageProps) {
-  const { id } = use(params);
+export default function PartDrillDown({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
-
-  // Try loading from API, fallback to mock
-  const [part, setPart] = useState<Part | undefined>(undefined);
-  const [dataSource, setDataSource] = useState<"api" | "mock">("mock");
-  const existingOverrides: any[] = [];
-  const [overrides, setOverrides] = useState<OverrideEntry[]>([]);
-  const [reason, setReason] = useState("");
+  const { id } = use(params);
+  
+  const { parts, lots, mode, updatePart, addOverride } = useData();
   const [submitting, setSubmitting] = useState(false);
+  const [reason, setReason] = useState("");
 
-  useEffect(() => {
-    let cancelled = false;
-    async function fetchData() {
-      try {
-        const res = await fetch("/api/results");
-        if (!res.ok) throw new Error("API error");
-        const data: PipelineResults = await res.json();
-        if (cancelled) return;
-        const apiPart = data.parts?.find((p) => p.id === id);
-        if (apiPart) {
-          setPart(apiPart);
-          setDataSource("api");
-          // Also load overrides from API data
-          const apiOverrides = (data.overrides || []).filter((o) => o.partId === id);
-          if (apiOverrides.length > 0) {
-            setOverrides(apiOverrides);
-          }
-        }
-      } catch {
-        // Keep mock data
-      }
-    }
-    fetchData();
-    return () => { cancelled = true; };
-  }, [id]);
+  const part = parts.find(p => p.id === id);
+  const loading = mode === "loading" || mode === "live_pipeline";
 
-  if (!part) {
+  if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-32">
-        <p className="text-neutral-400 text-lg mb-4">Part #{id} not found</p>
-        <Button variant="ghost" onClick={() => router.push("/dashboard")}>
-          <ArrowLeft className="h-4 w-4" /> Back to Dashboard
-        </Button>
+      <div className="flex items-center justify-center h-[50vh] text-neutral-500">
+        Loading part details...
       </div>
     );
   }
+
+  if (!part) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[50vh] text-neutral-500 gap-4">
+        <AlertTriangle className="w-8 h-8 text-yellow-500" />
+        <p>Part not found in the current dataset.</p>
+        <button onClick={() => router.back()} className="text-cyan-400 hover:underline">
+          Go back
+        </button>
+      </div>
+    );
+  }
+
+  const overrides = [];
 
   function handleOverride(action: "accept" | "reject") {
     if (!reason.trim()) return;
@@ -83,7 +60,7 @@ export default function PartPage({ params }: PartPageProps) {
         timestamp: new Date().toLocaleString(),
         reason: reason.trim(),
       };
-      setOverrides([entry, ...overrides]);
+      addOverride(entry);
       setReason("");
       setSubmitting(false);
       toast.success(`Override logged for Part #${part!.id}`, { description: `Action: ${action.toUpperCase()}` });
@@ -112,13 +89,13 @@ export default function PartPage({ params }: PartPageProps) {
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-white">Part #{part.id}</h1>
               <Badge status={part.status} />
-              {dataSource === "api" ? (
+              {mode === "live_results" ? (
                 <span className="flex items-center gap-1 text-emerald-400 text-xs">
                   <Wifi className="h-3 w-3" /> ML Pipeline
                 </span>
               ) : (
-                <span className="flex items-center gap-1 text-amber-400 text-xs">
-                  <WifiOff className="h-3 w-3" /> Demo
+                <span className="flex items-center gap-1 text-cyan-400 text-xs">
+                  <WifiOff className="h-3 w-3" /> Static Demo
                 </span>
               )}
             </div>
@@ -238,8 +215,6 @@ export default function PartPage({ params }: PartPageProps) {
             </Button>
           </div>
         </div>
-
-        {overrides.length > 0 && <OverrideLog entries={overrides} />}
       </Card>
     </div>
   );

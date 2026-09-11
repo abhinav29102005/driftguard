@@ -2,7 +2,9 @@
 
 import React from "react";
 import { usePathname } from "next/navigation";
-import { Search, Bell } from "lucide-react";
+import { Search, Bell, Database, Activity, Play } from "lucide-react";
+import { useData } from "@/lib/DataContext";
+
 
 function getBreadcrumb(pathname: string): string[] {
   const segments = pathname.split("/").filter(Boolean);
@@ -16,6 +18,7 @@ function getBreadcrumb(pathname: string): string[] {
 }
 
 export function Topbar() {
+  const { mode, setMode } = useData();
   const pathname = usePathname();
   const crumbs = getBreadcrumb(pathname);
 
@@ -33,8 +36,31 @@ export function Topbar() {
         ))}
       </div>
 
+      
       {/* Right side */}
       <div className="flex items-center gap-4">
+        {/* Data Source Selector */}
+        <div className="flex items-center bg-white/5 rounded-lg border border-white/10 p-1">
+          <button 
+            onClick={() => setMode("static")}
+            className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md transition ${mode === "static" ? "bg-white/10 text-white" : "text-neutral-500 hover:text-neutral-300"}`}
+          >
+            <Database className="w-3 h-3" /> Static
+          </button>
+          <button 
+            onClick={() => setMode("live_results")}
+            className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md transition ${mode === "live_results" ? "bg-white/10 text-emerald-400" : "text-neutral-500 hover:text-neutral-300"}`}
+          >
+            <Activity className="w-3 h-3" /> API Results
+          </button>
+          <button 
+            onClick={() => setMode("live_pipeline")}
+            className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md transition ${mode === "live_pipeline" ? "bg-white/10 text-cyan-400" : "text-neutral-500 hover:text-neutral-300"}`}
+          >
+            <Play className="w-3 h-3" /> Run Pipeline
+          </button>
+        </div>
+
         {/* Search */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-500" />

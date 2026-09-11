@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { StatsRow } from "@/components/dashboard/StatsRow";
 import { LotSelector } from "@/components/dashboard/LotSelector";
@@ -10,48 +10,13 @@ import { DriftTrend } from "@/components/charts/DriftTrend";
 import { OverrideLog } from "@/components/dashboard/OverrideLog";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import type { Part, Lot, OverrideEntry } from "@/lib/types";
-import type { PipelineResults, PipelineMetrics } from "@/lib/api";
+import { useData } from "@/lib/DataContext";
 import { Loader2, Wifi, WifiOff } from "lucide-react";
 
 export default function DashboardOverview() {
   const router = useRouter();
-
-  // Data state: loaded from API or mock fallback
-  const [lots, setLots] = useState<Lot[]>([]);
-  const [allParts, setAllParts] = useState<Part[]>([]);
-  const [overrides, setOverrides] = useState<OverrideEntry[]>([]);
-  const [metrics, setMetrics] = useState<PipelineMetrics | null>(null);
-  const [dataSource, setDataSource] = useState<"loading" | "api" | "error">("loading");
-
+  const { mode, lots, parts: allParts, overrides, metrics } = useData();
   const [selectedLot, setSelectedLot] = useState("all");
-
-  // Try fetching from backend on mount
-  useEffect(() => {
-    let cancelled = false;
-    async function fetchData() {
-      try {
-        const res = await fetch("/api/results");
-        if (!res.ok) throw new Error("API error");
-        const data: PipelineResults = await res.json();
-        if (cancelled) return;
-        if (data.parts && data.lots) {
-          setLots(data.lots);
-          setAllParts(data.parts);
-          setOverrides(data.overrides || []);
-          setMetrics(data.metrics || null);
-          setDataSource("api");
-        } else {
-          setDataSource("error");
-        }
-      } catch {
-        if (!cancelled) setDataSource("error");
-      }
-    }
-    fetchData();
-    return () => { cancelled = true; };
-  }, []);
-
   const activeParts = useMemo(() => {
     if (selectedLot === "all") return allParts;
     return allParts.filter((p) => p.lotId === selectedLot);
@@ -75,13 +40,22 @@ export default function DashboardOverview() {
     <div className="space-y-8">
       {/* Data source indicator */}
       <div className="flex items-center gap-2 text-xs">
-        {dataSource === "loading" ? (
+        {mode === "loading" || mode === "live_pipeline" ? (
           <span className="flex items-center gap-1.5 text-neutral-500">
-            <Loader2 className="h-3 w-3 animate-spin" /> Loading data…
+            <Loader2 className="h-3 w-3 animate-spin" /> {mode === "live_pipeline" ? "Running ML Pipeline..." : "Loading data..."}
           </span>
-        ) : dataSource === "api" ? (
+        ) : mode === "live_results" ? (
           <span className="flex items-center gap-1.5 text-emerald-400">
-            <Wifi className="h-3 w-3" /> ML Pipeline Data
+            <Wifi className="h-3 w-3" /> Live API Results
+            {metrics && (
+              <span className="text-neutral-500 ml-2">
+                Recall {(metrics.recall * 100).toFixed(1)}% · MAE ±{metrics.mae_168h}µA
+              </span>
+            )}
+          </span>
+        ) : mode === "static" ? (
+          <span className="flex items-center gap-1.5 text-cyan-400">
+            <WifiOff className="h-3 w-3" /> Static Demo Results
             {metrics && (
               <span className="text-neutral-500 ml-2">
                 Recall {(metrics.recall * 100).toFixed(1)}% · MAE ±{metrics.mae_168h}µA
@@ -89,8 +63,8 @@ export default function DashboardOverview() {
             )}
           </span>
         ) : (
-          <span className="flex items-center gap-1.5 text-amber-400">
-            <WifiOff className="h-3 w-3" /> Backend Offline (Start server to view data)
+          <span className="flex items-center gap-1.5 text-red-400">
+            <WifiOff className="h-3 w-3" /> Data Error
           </span>
         )}
       </div>
