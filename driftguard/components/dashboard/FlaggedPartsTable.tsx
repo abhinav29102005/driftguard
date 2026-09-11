@@ -95,7 +95,7 @@ export function FlaggedPartsTable({ parts, showAll = false }: FlaggedPartsTableP
             {filtered.map((part) => (
               <tr
                 key={part.id}
-                onClick={() => router.push(`/dashboard/parts/${part.id}`)}
+                onClick={() => router.push(`/dashboard/part?id=${part.id}`)}
                 className="border-b border-white/5 hover:bg-white/[0.03] cursor-pointer transition-colors group"
               >
                 <td className="px-4 py-3 text-white font-mono text-xs">#{part.id}</td>

@@ -95,7 +95,7 @@ export default function DashboardOverview() {
             </p>
             <AnomalyScatter
               parts={scatterData}
-              onPartClick={(id) => router.push(`/dashboard/parts/${id}`)}
+              onPartClick={(id) => router.push(`/dashboard/part?id=${id}`)}
             />
           </Card>
         </div>

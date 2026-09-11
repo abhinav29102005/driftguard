@@ -617,7 +617,7 @@ export default function DriftGuardLanding() {
         {/* Link to full dashboard */}
         <div className="flex justify-center mt-8">
           <Link
-            href={activeDemoPart ? `/dashboard/parts/${activeDemoPart.id}` : "/dashboard"}
+            href={activeDemoPart ? `/dashboard/part?id=${activeDemoPart.id}` : "/dashboard"}
             className="inline-flex items-center gap-2 text-sm text-cyan-400 hover:text-cyan-300 transition group"
           >
             View full drill-down for this part
@@ -688,7 +688,7 @@ export default function DriftGuardLanding() {
               {flaggedParts.slice(0, 6).map((p) => (
                   <tr
                     key={p.id}
-                    onClick={() => router.push(`/dashboard/parts/${p.id}`)}
+                    onClick={() => router.push(`/dashboard/part?id=${p.id}`)}
                     className="border-b border-white/5 hover:bg-white/[0.03] cursor-pointer transition-colors"
                   >
                     <td className="px-4 py-3 text-white font-mono text-xs">#{p.id}</td>
