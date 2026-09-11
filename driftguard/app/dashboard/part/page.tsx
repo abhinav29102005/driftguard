@@ -1,6 +1,6 @@
 "use client";
 
-import React, { use, useState, useMemo } from "react";
+import React, { Suspense, use, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, CheckCircle2, AlertTriangle, XCircle, Beaker, FileTerminal, Radar, Zap, TrendingUp, FlaskConical, Blend, Wifi, WifiOff } from "lucide-react";
 import { Card } from "@/components/ui/Card";
@@ -14,9 +14,12 @@ import { OverrideLog } from "@/components/dashboard/OverrideLog";
 import { Button } from "@/components/ui/Button";
 import type { OverrideEntry } from "@/lib/types";
 
-export default function PartDrillDown({ params }: { params: Promise<{ id: string }> }) {
+import { useSearchParams } from "next/navigation";
+
+function PartDrillDown() {
   const router = useRouter();
-  const { id } = use(params);
+  const searchParams = useSearchParams();
+  const id = searchParams.get("id");
   
   const { parts, lots, mode, updatePart, addOverride } = useData();
   const [submitting, setSubmitting] = useState(false);
@@ -29,24 +32,6 @@ export default function PartDrillDown({ params }: { params: Promise<{ id: string
     return (
       <div className="flex items-center justify-center h-[50vh] text-neutral-500">
         Loading part details...
-      </div>
-    );
-  }
-
-  if (mode === "loading") {
-    return (
-      <div className="flex flex-col items-center justify-center h-[50vh] text-neutral-400 gap-4">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400"></div>
-        <p>Loading part data...</p>
-      </div>
-    );
-  }
-
-  if (mode === "loading") {
-    return (
-      <div className="flex flex-col items-center justify-center h-[50vh] text-neutral-400 gap-4">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400"></div>
-        <p>Loading part data...</p>
       </div>
     );
   }
@@ -235,5 +220,14 @@ export default function PartDrillDown({ params }: { params: Promise<{ id: string
         </div>
       </Card>
     </div>
+  );
+}
+
+
+export default function PartDrillDownWrapper() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center h-[50vh] text-neutral-500">Loading part details...</div>}>
+      <PartDrillDown />
+    </Suspense>
   );
 }
