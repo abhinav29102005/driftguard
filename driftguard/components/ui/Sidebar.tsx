@@ -33,14 +33,14 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       )}
     >
       {/* Brand */}
-      <div className="flex items-center gap-3 px-5 py-6 border-b border-white/5">
+      <Link href="/" className="flex items-center gap-3 px-5 py-6 border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-indigo-600">
           <Radar className="h-5 w-5 text-white" />
         </div>
         {!collapsed && (
           <span className="text-white font-bold text-lg tracking-tight">DriftGuard</span>
         )}
-      </div>
+      </Link>
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1">
