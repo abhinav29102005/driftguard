@@ -1,6 +1,7 @@
 "use client";
 
 import { checkHealth, getPrecomputedResults } from "@/lib/api";
+import { useData } from "@/lib/DataContext";
 import React, { useRef, useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -178,28 +179,11 @@ export default function DriftGuardLanding() {
 
   // Pull real data from mock
   // State: initially mock, update from API
-  const [flaggedParts, setFlaggedParts] = useState<any[]>([]);
-  const [allParts, setAllParts] = useState<any[]>([]);
-  const [lots, setLots] = useState<any[]>([]);
-  const [apiMetrics, setApiMetrics] = useState<{ recall: number; mae_168h: number } | null>(null);
-
-  // Fetch from API on mount
-  useEffect(() => {
-    let cancelled = false;
-    async function loadApi() {
-      try {
-        const data = await getPrecomputedResults();
-        if (!data) return;
-        if (cancelled || !data.parts) return;
-        setAllParts(data.parts);
-        setFlaggedParts(data.parts.filter((p: any) => p.status !== "normal"));
-        setLots(data.lots);
-        if (data.metrics) setApiMetrics({ recall: data.metrics.recall, mae_168h: data.metrics.mae_168h });
-      } catch { /* keep mock */ }
-    }
-    loadApi();
-    return () => { cancelled = true; };
-  }, []);
+  const { parts: allParts, lots, metrics: apiMetrics } = useData();
+  
+  const flaggedParts = useMemo(() => {
+    return allParts ? allParts.filter((p: any) => p.status !== "normal") : [];
+  }, [allParts]);
 
   // Pick a real flagged anomaly part for Module A demo
   const moduleAPart = useMemo(() => {
