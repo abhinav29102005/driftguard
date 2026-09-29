@@ -1,130 +1,55 @@
 "use client";
 
 import { memo, useMemo } from "react";
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Cell,
-} from "recharts";
 import type { ShapAttribution } from "@/lib/types";
 
 interface FeatureAttributionProps {
   data: ShapAttribution[];
 }
 
-function CustomTooltip({ active, payload }: any) {
-  if (!active || !payload?.length) return null;
-  const d = payload[0]?.payload;
+export const FeatureAttribution = memo(function FeatureAttribution({ data }: FeatureAttributionProps) {
+  const ranked = useMemo(
+    () => [...data].filter((item) => Number.isFinite(item.value)).sort((a, b) => Math.abs(b.value) - Math.abs(a.value)),
+    [data],
+  );
 
-  if (d.isTotal) {
+  if (ranked.length === 0) {
     return (
-      <div className="rounded-xl bg-neutral-900/95 border border-white/10 backdrop-blur-xl px-4 py-3 shadow-2xl">
-        <p className="text-white text-xs font-bold mb-1">{d.feature}</p>
-        <div className="flex items-center gap-2 text-xs">
-          <span className="text-neutral-400">Final Score:</span>
-          <span className="font-mono font-bold text-white">{d.end.toFixed(3)}</span>
-        </div>
+      <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-500">
+        Attribution data is not available for this part.
       </div>
     );
   }
 
+  const maxImpact = Math.max(...ranked.map((item) => Math.abs(item.value)), 1);
+
   return (
-    <div className="rounded-xl bg-neutral-900/95 border border-white/10 backdrop-blur-xl px-4 py-3 shadow-2xl">
-      <p className="text-white text-xs font-bold mb-1">{d.feature}</p>
-      <div className="flex items-center gap-2 text-xs">
-        <span className="text-neutral-400">Impact:</span>
-        <span className={`font-mono font-bold ${d.value > 0 ? "text-red-400" : "text-blue-400"}`}>
-          {d.value > 0 ? "+" : ""}{d.value.toFixed(3)}
-        </span>
-      </div>
-      <div className="flex items-center gap-2 text-xs mt-1">
-        <span className="text-neutral-500">Cumulative:</span>
-        <span className="font-mono text-neutral-300">{d.end.toFixed(3)}</span>
+    <div className="space-y-3">
+      {ranked.map((item) => {
+        const positive = item.value >= 0;
+        const width = Math.max((Math.abs(item.value) / maxImpact) * 100, 4);
+
+        return (
+          <div key={item.feature} className="grid grid-cols-[minmax(110px,1fr)_minmax(120px,2fr)_64px] items-center gap-3">
+            <span className="truncate text-xs font-medium text-slate-600" title={item.feature}>
+              {item.feature}
+            </span>
+            <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+              <div
+                className={`h-full rounded-full ${positive ? "bg-red-500" : "bg-blue-500"}`}
+                style={{ width: `${width}%` }}
+              />
+            </div>
+            <span className={`text-right font-mono text-xs font-semibold ${positive ? "text-red-700" : "text-blue-700"}`}>
+              {positive ? "+" : ""}{item.value.toFixed(3)}
+            </span>
+          </div>
+        );
+      })}
+      <div className="flex items-center gap-4 pt-2 text-[11px] text-slate-500">
+        <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-red-500" /> Increases risk</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-blue-500" /> Reduces risk</span>
       </div>
     </div>
   );
-}
-
-export const FeatureAttribution = memo(function FeatureAttribution({ data }: FeatureAttributionProps) {
-  // Turn shap values into a waterfall dataset
-  const waterfallData = useMemo(() => {
-    // Sort by absolute impact descending
-    const sorted = [...data].sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
-    
-    let current = 0.5; // Assume a base risk score of 0.5 for the waterfall start
-    const result = [
-      {
-        feature: "Base Risk",
-        isTotal: true,
-        start: 0,
-        end: current,
-        value: current,
-      }
-    ];
-
-    sorted.forEach(d => {
-      const next = current + d.value;
-      result.push({
-        feature: d.feature,
-        isTotal: false,
-        start: Math.min(current, next),
-        end: Math.max(current, next),
-        value: d.value,
-        
-        
-      });
-      current = next;
-    });
-
-    result.push({
-      feature: "Final Score",
-      isTotal: true,
-      start: 0,
-      end: current,
-      value: current,
-    });
-
-    return result;
-  }, [data]);
-
-  // We use a bar chart with a custom shape to draw the waterfall bar exactly where it needs to be
-  const CustomBar = (props: any) => {
-    const { x, y, width, height, payload, background } = props;
-    if (payload.isTotal) {
-      return <rect x={x} y={y} width={width} height={height} fill="#713f12" rx="4" ry="4" />;
-    }
-    // For midgle bars, they are either positive or negative
-    const color = payload.value > 0 ? "#ef4444" : "#3b82f6";
-    return <rect x={x} y={y} width={width} height={height} fill={color} rx="4" ry="4" />;
-  };
-
-  return (
-    <div className="w-full h-[300px]">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={waterfallData} layout="vertical" margin={{ top: 5, right: 20, left: 80, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
-          <XAxis
-            type="number"
-            hide
-            domain={['minData', 'maxData']}
-          />
-          <YAxis
-            type="category"
-            dataKey="feature"
-            stroke="#525252"
-            tick={{ fill: "#d4d4d4", fontSize: 11 }}
-            axisLine={{ stroke: "rgba(255,255,255,0.1)" }}
-            width={75}
-          />
-          <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
-          <Bar dataKey="[start, end]" shape={<CustomBar />} maxBarSize={20} />
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  );
- });
+});

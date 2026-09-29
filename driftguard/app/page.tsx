@@ -1,823 +1,276 @@
 "use client";
 
-import { checkHealth, getPrecomputedResults } from "@/lib/api";
-import { useData } from "@/lib/DataContext";
-import React, { useRef, useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { motion, useMotionValue, useSpring, useTransform, AnimatePresence } from "framer-motion";
+import { useMemo, useState } from "react";
 import {
-  Brain, Radar, TrendingUp, ShieldCheck, GitBranch, LayoutDashboard,
-  AlertTriangle, CheckCircle2, Zap, Database, FlaskConical, Sigma,
-  ArrowRight, Cpu, Gauge, FileWarning, Eye, Rocket, ChevronRight,
-  Activity, BarChart3, Target, Code2,
+  Activity,
+  AlertTriangle,
+  ArrowRight,
+  BarChart3,
+  CheckCircle2,
+  ChevronRight,
+  CircleDot,
+  Database,
+  FlaskConical,
+  LayoutDashboard,
+  Radar,
+  Search,
+  ShieldCheck,
+  SlidersHorizontal,
+  TrendingUp,
 } from "lucide-react";
-import type { PipelineResults } from "@/lib/api";
-import type { Part, Lot } from "@/lib/types";
+import { useData } from "@/lib/DataContext";
+import { Badge } from "@/components/ui/Badge";
+import { Card } from "@/components/ui/Card";
 import { PhysicsCurve } from "@/components/charts/PhysicsCurve";
 import { FeatureAttribution } from "@/components/charts/FeatureAttribution";
-import { Badge } from "@/components/ui/Badge";
 
-/* ================================================================ */
-/*  Utility sub-components                                          */
-/* ================================================================ */
+type Workspace = "overview" | "detection" | "pipeline";
 
-/* ---------- 3D Tilt Card (Aceternity-style) ---------- */
-function TiltCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-  const rotateX = useSpring(useTransform(y, [-100, 100], [12, -12]), { stiffness: 150, damping: 15 });
-  const rotateY = useSpring(useTransform(x, [-100, 100], [-12, 12]), { stiffness: 150, damping: 15 });
+const navItems: { id: Workspace; label: string; icon: typeof LayoutDashboard }[] = [
+  { id: "overview", label: "Overview", icon: LayoutDashboard },
+  { id: "detection", label: "Live detection", icon: Radar },
+  { id: "pipeline", label: "Pipeline status", icon: Activity },
+];
 
-  function handleMouse(e: React.MouseEvent) {
-    const rect = ref.current?.getBoundingClientRect();
-    if (!rect) return;
-    x.set(e.clientX - rect.left - rect.width / 2);
-    y.set(e.clientY - rect.top - rect.height / 2);
-  }
-  function reset() { x.set(0); y.set(0); }
-
-  return (
-    <motion.div
-      ref={ref}
-      onMouseMove={handleMouse}
-      onMouseLeave={reset}
-      style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
-      className={`relative rounded-2xl border border-white/10 bg-neutral-900/60 backdrop-blur-xl p-6 shadow-2xl ${className}`}
-    >
-      <div style={{ transform: "translateZ(40px)" }}>{children}</div>
-    </motion.div>
-  );
-}
-
-/* ---------- Spotlight background ---------- */
-function Spotlight() {
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="absolute -top-40 left-1/2 h-[500px] w-[800px] -translate-x-1/2 animate-spotlight rounded-full bg-gradient-to-r from-cyan-500/30 via-indigo-500/20 to-purple-500/30 blur-3xl" />
-    </div>
-  );
-}
-
-/* ---------- Animated counter ---------- */
-function AnimatedCounter({ target, suffix = "", prefix = "", duration = 2000 }: {
-  target: number; suffix?: string; prefix?: string; duration?: number;
+function StatCard({
+  label,
+  value,
+  detail,
+  icon: Icon,
+  tone = "cyan",
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  icon: typeof Activity;
+  tone?: "cyan" | "red" | "green" | "slate";
 }) {
-  const [count, setCount] = useState(0);
-  const [hasStarted, setHasStarted] = useState(false);
-  const ref = useRef<HTMLSpanElement>(null);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting && !hasStarted) setHasStarted(true); },
-      { threshold: 0.5 }
-    );
-    if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, [hasStarted]);
-
-  useEffect(() => {
-    if (!hasStarted) return;
-    const steps = 60;
-    const increment = target / steps;
-    let current = 0;
-    const interval = setInterval(() => {
-      current += increment;
-      if (current >= target) { setCount(target); clearInterval(interval); }
-      else setCount(Math.floor(current * 10) / 10);
-    }, duration / steps);
-    return () => clearInterval(interval);
-  }, [hasStarted, target, duration]);
-
-  const display = Number.isInteger(target) ? Math.round(count) : count.toFixed(1);
-  return <span ref={ref}>{prefix}{display}{suffix}</span>;
-}
-
-/* ---------- Bento feature card ---------- */
-function FeatureCard({
-  icon: Icon, title, desc, accent, span = "",
-}: { icon: React.ElementType; title: string; desc: string; accent: string; span?: string }) {
+  const tones = {
+    cyan: "bg-cyan-50 text-cyan-700",
+    red: "bg-red-50 text-red-700",
+    green: "bg-emerald-50 text-emerald-700",
+    slate: "bg-slate-100 text-slate-700",
+  };
   return (
-    <TiltCard className={`group hover:border-white/20 transition-colors ${span}`}>
-      <div className={`inline-flex h-11 w-11 items-center justify-center rounded-xl ${accent} mb-4`}>
-        <Icon className="h-5 w-5 text-white" />
+    <Card className="!p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm text-slate-500">{label}</p>
+          <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{value}</p>
+          <p className="mt-1 text-xs text-slate-500">{detail}</p>
+        </div>
+        <div className={`rounded-lg p-2.5 ${tones[tone]}`}>
+          <Icon className="h-5 w-5" />
+        </div>
       </div>
-      <h3 className="text-white font-semibold text-lg mb-1.5">{title}</h3>
-      <p className="text-neutral-400 text-sm leading-relaxed">{desc}</p>
-    </TiltCard>
+    </Card>
   );
 }
 
-/* ---------- Metric pill with animated counter ---------- */
-function Metric({ label, value, numericValue, suffix, prefix, icon: Icon }: {
-  label: string; value?: string; numericValue?: number; suffix?: string; prefix?: string; icon: React.ElementType;
+function Overview({
+  totalParts,
+  flaggedParts,
+  lots,
+  recall,
+  mae,
+  onNavigate,
+}: {
+  totalParts: number;
+  flaggedParts: number;
+  lots: { id: string; name: string; riskLevel: "low" | "medium" | "high"; totalParts: number; flaggedCount: number; date: string }[];
+  recall: number;
+  mae: number;
+  onNavigate: (workspace: Workspace) => void;
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.5 }}
-      className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-5 py-4"
-    >
-      <Icon className="h-5 w-5 text-cyan-400 shrink-0" />
-      <div>
-        <div className="text-white font-bold text-xl leading-none">
-          {numericValue !== undefined
-            ? <AnimatedCounter target={numericValue} suffix={suffix} prefix={prefix} />
-            : value}
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium text-cyan-700">Screening workspace</p>
+          <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900">Good morning, Dr. Krishnan</h1>
+          <p className="mt-2 text-sm text-slate-500">Review the latest ESS screening activity and investigate exceptions.</p>
         </div>
-        <div className="text-neutral-500 text-xs mt-1">{label}</div>
+        <Link href="/dashboard" className="inline-flex items-center gap-2 rounded-lg bg-cyan-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-cyan-800">
+          Open full console <ArrowRight className="h-4 w-4" />
+        </Link>
       </div>
-    </motion.div>
-  );
-}
 
-/* ---------- Pipeline step ---------- */
-function PipelineStep({ n, title, sub, delay }: { n: number; title: string; sub: string; delay?: number }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, x: -20 }}
-      whileInView={{ opacity: 1, x: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.4, delay: delay || 0 }}
-      className="flex items-start gap-4"
-    >
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-indigo-600 text-white text-sm font-bold">
-        {n}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Parts screened" value={totalParts.toLocaleString()} detail="Across active lots" icon={Database} />
+        <StatCard label="Needs review" value={flaggedParts.toString()} detail={`${((flaggedParts / Math.max(totalParts, 1)) * 100).toFixed(1)}% of screened parts`} icon={AlertTriangle} tone="red" />
+        <StatCard label="Estimated recall" value={`${(recall * 100).toFixed(1)}%`} detail="Synthetic evaluation" icon={ShieldCheck} tone="green" />
+        <StatCard label="Drift MAE" value={`±${mae} µA`} detail="168-hour prediction" icon={TrendingUp} tone="slate" />
       </div>
-      <div>
-        <p className="text-white font-medium text-sm">{title}</p>
-        <p className="text-neutral-500 text-xs mt-0.5">{sub}</p>
-      </div>
-    </motion.div>
-  );
-}
 
-/* ---------- Floating particle grid background ---------- */
-function GridBackground() {
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden opacity-30">
-      <div
-        className="absolute inset-0"
-        style={{
-          backgroundImage: `radial-gradient(circle at 1px 1px, rgba(34,211,238,0.15) 1px, transparent 0)`,
-          backgroundSize: "40px 40px",
-        }}
-      />
-    </div>
-  );
-}
-
-/* ================================================================ */
-/*  Main Page                                                       */
-/* ================================================================ */
-export default function DriftGuardLanding() {
-  const [tab, setTab] = useState<"A" | "B">("A");
-  const router = useRouter();
-
-  // Pull real data from mock
-  // State: initially mock, update from API
-  const { parts: allParts, lots, metrics: apiMetrics } = useData();
-  
-  const flaggedParts = useMemo(() => {
-    return allParts ? allParts.filter((p: any) => p.status !== "normal") : [];
-  }, [allParts]);
-
-  // Pick a real flagged anomaly part for Module A demo
-  const moduleAPart = useMemo(() => {
-    return flaggedParts.find((p) => p.status === "anomaly") || flaggedParts[0];
-  }, [flaggedParts]);
-
-  // Pick a real warning/slope-exceeds part for Module B demo
-  const moduleBPart = useMemo(() => {
-    return flaggedParts.find((p) => p.moduleB.slope_exceeds && p.status !== "normal") || flaggedParts[1];
-  }, [flaggedParts]);
-
-  const activeDemoPart = tab === "A" ? moduleAPart : moduleBPart;
-
-  // Compute real stats
-  const totalScreened = allParts.length;
-  const totalFlagged = flaggedParts.length;
-  const recallPct = apiMetrics ? apiMetrics.recall * 100 : 98.4;
-  const meanMAE = apiMetrics ? apiMetrics.mae_168h : 1.8;
-
-  // Top ECOD feature for Module A part
-  const topEcodFeature = moduleAPart
-    ? Object.entries(moduleAPart.moduleA.ecod_per_feature)
-        .sort((a: any, b: any) => (b[1] as number) - (a[1] as number))[0]
-    : null;
-
-  return (
-    <main className="min-h-screen bg-black selection:bg-cyan-500/30">
-      {/* ──── Navbar ──── */}
-      <nav className="fixed top-0 z-50 w-full border-b border-white/10 bg-black/70 backdrop-blur-lg">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-500 to-indigo-600">
-              <Radar className="h-4.5 w-4.5 text-white" />
-            </div>
-            <span className="text-white font-bold tracking-tight text-lg">DriftGuard</span>
-          </div>
-          <div className="hidden md:flex items-center gap-8 text-sm text-neutral-400">
-            <a href="#modules" className="hover:text-white transition">Modules</a>
-            <a href="#pipeline" className="hover:text-white transition">Pipeline</a>
-            <a href="#detection" className="hover:text-white transition">Live Detection</a>
-            <a href="#math" className="hover:text-white transition">Math</a>
-            <a href="#reasoning" className="hover:text-white transition">Reasoning</a>
-            <a href="#resources" className="hover:text-white transition">Data</a>
-            <a href="#tech" className="hover:text-white transition">Tech Stack</a>
-          </div>
-          <Link
-            href="/dashboard"
-            className="rounded-full bg-gradient-to-r from-cyan-500 to-indigo-600 text-white text-sm font-medium px-5 py-2 hover:opacity-90 transition shadow-lg shadow-cyan-500/20"
-          >
-            Launch QA Console
-          </Link>
-        </div>
-      </nav>
-
-      {/* ──── Hero ──── */}
-      <section className="relative flex min-h-screen items-center justify-center overflow-hidden pt-20">
-        <Spotlight />
-        <GridBackground />
-        <div className="relative z-10 mx-auto max-w-4xl px-6 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs text-neutral-300"
-          >
-            <Zap className="h-3.5 w-3.5 text-cyan-400" /> Smart India Hackathon 2026 · PS 26170 · ISRO
-          </motion.div>
-          <motion.h1
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.1 }}
-            className="text-5xl md:text-7xl font-bold tracking-tight text-white leading-[1.05]"
-          >
-            Catch defects the
-            <span className="block bg-gradient-to-r from-cyan-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent">
-              datasheet limit can&apos;t see.
-            </span>
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="mt-6 text-lg text-neutral-400 max-w-2xl mx-auto leading-relaxed"
-          >
-            In high-reliability space payloads, latent defects pass static datasheet limits but drift anomalously over time. These "walking wounded" components escape standard screening, leading to catastrophic field failures in orbit.
-          </motion.p>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.5 }}
-            className="mt-10 flex items-center justify-center gap-4 flex-wrap"
-          >
-            <Link
-              href="/dashboard"
-              className="flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 to-indigo-600 px-7 py-3.5 text-white font-medium hover:opacity-90 transition shadow-lg shadow-cyan-500/25"
-            >
-              Open QA Dashboard <ArrowRight className="h-4 w-4" />
-            </Link>
-            <a
-              href="#modules"
-              className="rounded-full border border-white/15 px-7 py-3.5 text-neutral-300 hover:border-white/30 hover:text-white transition"
-            >
-              Explore Architecture
-            </a>
-          </motion.div>
-
-          {/* Live counter strip inline */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.8 }}
-            className="mt-16 flex items-center justify-center gap-8 md:gap-12 text-center flex-wrap"
-          >
+      <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
+        <Card className="!p-0">
+          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
             <div>
-              <div className="text-white font-bold text-2xl md:text-3xl font-mono">
-                <AnimatedCounter target={totalScreened} />
-              </div>
-              <div className="text-neutral-500 text-xs mt-1">Parts screened</div>
+              <h2 className="font-semibold text-slate-900">Active screening lots</h2>
+              <p className="mt-1 text-xs text-slate-500">Select a lot to inspect its risk profile.</p>
             </div>
-            <div className="h-8 w-px bg-white/10 hidden md:block" />
-            <div>
-              <div className="text-red-400 font-bold text-2xl md:text-3xl font-mono">
-                <AnimatedCounter target={totalFlagged} />
-              </div>
-              <div className="text-neutral-500 text-xs mt-1">Flagged for review</div>
-            </div>
-            <div className="h-8 w-px bg-white/10 hidden md:block" />
-            <div>
-              <div className="text-emerald-400 font-bold text-2xl md:text-3xl font-mono">
-                <AnimatedCounter target={recallPct} suffix="%" />
-              </div>
-              <div className="text-neutral-500 text-xs mt-1">Recall (synthetic eval)</div>
-            </div>
-            <div className="h-8 w-px bg-white/10 hidden md:block" />
-            <div>
-              <div className="text-purple-400 font-bold text-2xl md:text-3xl font-mono">
-                ±<AnimatedCounter target={meanMAE} suffix="µA" />
-              </div>
-              <div className="text-neutral-500 text-xs mt-1">168h drift MAE</div>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ──── Metrics strip ──── */}
-      <section className="border-y border-white/10 bg-neutral-950">
-        <div className="mx-auto grid max-w-7xl grid-cols-2 gap-4 px-6 py-10 md:grid-cols-4">
-          <Metric label="Detection latency / lot" value="< 2s" icon={Gauge} />
-          <Metric label={`${lots.length} lots screened`} numericValue={totalScreened} suffix=" parts" icon={Cpu} />
-          <Metric label="Drift prediction accuracy" prefix="±" numericValue={meanMAE} suffix="µA" icon={Sigma} />
-          <Metric label="Screening time saved" value="~40%" icon={TrendingUp} />
-        </div>
-      </section>
-
-      {/* ──── Feature Bento Grid ──── */}
-      <section id="modules" className="mx-auto max-w-7xl px-6 py-28">
-        <motion.h2
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-3xl md:text-4xl font-bold text-white text-center mb-3"
-        >
-          Two modules. One explainable risk score.
-        </motion.h2>
-        <p className="text-neutral-500 text-center mb-14 max-w-xl mx-auto">
-          Every part gets a fused, lot-relative score — not an absolute-limit pass/fail.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <FeatureCard
-            icon={Brain} title="Module A — Fused Outlier Score"
-            desc="Isolation Forest catches multivariate pattern drift; ECOD catches per-parameter tail anomalies — parameter-free, O(n·d log n)."
-            accent="bg-gradient-to-br from-cyan-500 to-blue-600" span="md:col-span-2"
-          />
-          <FeatureCard
-            icon={FlaskConical} title="Physics Baseline"
-            desc="Arrhenius / log-linear extrapolation grounds every drift forecast in reliability-engineering theory."
-            accent="bg-gradient-to-br from-purple-500 to-fuchsia-600"
-          />
-          <FeatureCard
-            icon={GitBranch} title="Per-Lot Normalization"
-            desc="MAD-based robust z-scoring per lot per timestamp — the mechanism that makes detection dynamic, not static."
-            accent="bg-gradient-to-br from-emerald-500 to-teal-600"
-          />
-          <FeatureCard
-            icon={TrendingUp} title="Module B — Drift Predictor"
-            desc="XGBoost residual correction on top of the physics baseline forecasts val_168h from val_0h + val_24h, MAE-optimized."
-            accent="bg-gradient-to-br from-orange-500 to-amber-600" span="md:col-span-2"
-          />
-          <FeatureCard
-            icon={Eye} title="SHAP Explainability"
-            desc="Every flag decomposes into per-feature contribution — never a black-box score."
-            accent="bg-gradient-to-br from-indigo-500 to-violet-600"
-          />
-          <FeatureCard
-            icon={Target} title="Recall-First Threshold"
-            desc="Tuned via PR curve — false negatives (missed defects) cost far more than false positives in mission-critical hardware."
-            accent="bg-gradient-to-br from-red-500 to-rose-600"
-          />
-          <FeatureCard
-            icon={Database} title="Synthetic Injection Validation"
-            desc="Threshold calibration on synthetically injected drift patterns — detector itself stays unsupervised."
-            accent="bg-gradient-to-br from-sky-500 to-cyan-600"
-          />
-          <FeatureCard
-            icon={LayoutDashboard} title="QA Dashboard"
-            desc="Flagged parts, physics-curve overlay, lot percentile, accept/reject override log — all in one interactive console."
-            accent="bg-gradient-to-br from-pink-500 to-rose-600" span="md:col-span-2"
-          />
-        </div>
-      </section>
-
-      {/* ──── Pipeline ──── */}
-      <section id="pipeline" className="border-t border-white/10 bg-neutral-950 py-28">
-        <div className="mx-auto max-w-6xl px-6 grid md:grid-cols-2 gap-16 items-center">
-          <div>
-            <motion.h2
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="text-3xl font-bold text-white mb-8"
-            >
-              End-to-end pipeline
-            </motion.h2>
-            <div className="space-y-7">
-              <PipelineStep n={1} title="Ingest & normalize" sub="Raw ESS logs → per-lot MAD z-score + log-transform" delay={0.1} />
-              <PipelineStep n={2} title="Feature decorrelation" sub="val_0h, early/mid/late slopes — not raw correlated timestamps" delay={0.2} />
-              <PipelineStep n={3} title="Module A ‖ Module B" sub="IF + ECOD fused score, parallel to physics + XGBoost forecast" delay={0.3} />
-              <PipelineStep n={4} title="Risk fusion" sub="Weighted combine → single explainable risk flag" delay={0.4} />
-              <PipelineStep n={5} title="SHAP + physics overlay" sub="QA-facing justification, not a black-box number" delay={0.5} />
-            </div>
+            <BarChart3 className="h-5 w-5 text-slate-400" />
           </div>
-          <TiltCard>
-            <Cpu className="h-8 w-8 text-cyan-400 mb-4" />
-            <h3 className="text-white font-semibold mb-2">O(n·d log n) at fab-lot scale</h3>
-            <p className="text-neutral-400 text-sm mb-5">
-              ECOD and Isolation Forest both scale linearly-ish in features and log-linearly
-              in lot size — unlike LOF&apos;s O(n²), this holds up on large ESS datasets.
-            </p>
-            <div className="rounded-lg bg-black/40 border border-white/10 p-4 font-mono text-xs text-cyan-300 space-y-1">
-              <div>O(x) = Σⱼ −log(min(F̂ₗ(xⱼ), F̂ᵣ(xⱼ)))</div>
-              <div className="text-neutral-500">{"// ECOD: sum of per-feature tail-probabilities"}</div>
-              <div className="mt-2">O_IF(x) = 2^(−E[h(x)] / c(n))</div>
-              <div className="text-neutral-500">{"// Isolation Forest: path-length anomaly score"}</div>
-              <div className="mt-2 text-amber-300">flag if 0.45·norm(O_IF) + 0.55·norm(O_ECOD) ≥ τ</div>
-            </div>
-          </TiltCard>
-        </div>
-      </section>
-
-      {/* ──── Live Detection Demo (Real Data) ──── */}
-      <section id="detection" className="mx-auto max-w-6xl px-6 py-28">
-        <motion.h2
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-3xl font-bold text-white text-center mb-3"
-        >
-          See it flag a real part
-        </motion.h2>
-        <p className="text-neutral-500 text-center mb-10 max-w-lg mx-auto">
-          Live data from the screening pipeline. Click a module to see its detection output.
-        </p>
-
-        {/* Module tabs */}
-        <div className="flex justify-center gap-3 mb-8">
-          {(["A", "B"] as const).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`rounded-full px-6 py-2.5 text-sm font-medium transition-all ${
-                tab === t
-                  ? "bg-gradient-to-r from-cyan-500 to-indigo-600 text-white shadow-lg shadow-cyan-500/20"
-                  : "bg-white/5 text-neutral-400 border border-white/10 hover:border-white/20"
-              }`}
-            >
-              Module {t} {t === "A" ? "— Outlier Detection" : "— Drift Prediction"}
-            </button>
-          ))}
-        </div>
-
-        <AnimatePresence mode="wait">
-          {tab === "A" && moduleAPart && (
-            <motion.div
-              key="moduleA"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.3 }}
-            >
-              <TiltCard className="mx-auto max-w-4xl">
-                <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-                  <div className="flex items-center gap-3">
-                    <span className="text-neutral-300 text-sm font-mono">Part #{moduleAPart.id}</span>
-                    <span className="text-neutral-600">·</span>
-                    <span className="text-neutral-400 text-sm">{moduleAPart.lotId}</span>
-                  </div>
-                  <Badge status={moduleAPart.status} />
-                </div>
-
-                {/* Score cards */}
-                <div className="grid grid-cols-4 gap-3 text-center mb-6">
-                  <div className="rounded-lg bg-white/5 p-3">
-                    <div className="text-neutral-500 text-xs">O_IF</div>
-                    <div className="text-white font-bold font-mono">{moduleAPart.moduleA.if_score.toFixed(3)}</div>
-                  </div>
-                  <div className="rounded-lg bg-white/5 p-3">
-                    <div className="text-neutral-500 text-xs">O_ECOD</div>
-                    <div className="text-white font-bold font-mono">{moduleAPart.moduleA.ecod_score.toFixed(2)}</div>
-                  </div>
-                  <div className="rounded-lg bg-cyan-500/10 p-3 border border-cyan-500/20">
-                    <div className="text-cyan-400 text-xs">Fused Score</div>
-                    <div className="text-white font-bold font-mono">{moduleAPart.moduleA.fused_score.toFixed(3)}</div>
-                  </div>
-                  <div className="rounded-lg bg-white/5 p-3">
-                    <div className="text-neutral-500 text-xs">Lot Percentile</div>
-                    <div className="text-white font-bold font-mono">{moduleAPart.lotPercentile}th</div>
+          <div className="divide-y divide-slate-100">
+            {lots.map((lot) => (
+              <Link key={lot.id} href={`/dashboard?lot=${lot.id}`} className="flex items-center justify-between px-5 py-4 hover:bg-slate-50">
+                <div className="flex items-center gap-3">
+                  <span className={`h-2.5 w-2.5 rounded-full ${lot.riskLevel === "high" ? "bg-red-500" : lot.riskLevel === "medium" ? "bg-amber-500" : "bg-emerald-500"}`} />
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800">{lot.name}</p>
+                    <p className="mt-0.5 text-xs text-slate-500">{lot.totalParts} parts · {lot.date}</p>
                   </div>
                 </div>
-
-                {/* SHAP Attribution */}
-                <div className="mb-4">
-                  <h4 className="text-neutral-400 text-xs font-medium mb-3 uppercase tracking-wider">SHAP / ECOD Feature Attribution</h4>
-                  <FeatureAttribution data={moduleAPart.shapValues} />
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-slate-500">{lot.flaggedCount} flagged</span>
+                  <ChevronRight className="h-4 w-4 text-slate-400" />
                 </div>
-
-                <p className="text-neutral-400 text-sm leading-relaxed">
-                  {topEcodFeature && (
-                    <>
-                      Driver: <span className="text-white font-medium">{topEcodFeature[0]}</span> contributed{" "}
-                      <span className="text-cyan-400 font-mono">{(topEcodFeature[1] as number).toFixed(1)}</span> of{" "}
-                      <span className="text-cyan-400 font-mono">{moduleAPart.moduleA.ecod_score.toFixed(1)}</span> total
-                      ECOD score — this part sits at the <span className="text-white">{moduleAPart.lotPercentile}th percentile</span> within
-                      its lot&apos;s distribution.
-                    </>
-                  )}
-                </p>
-              </TiltCard>
-            </motion.div>
-          )}
-
-          {tab === "B" && moduleBPart && (
-            <motion.div
-              key="moduleB"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.3 }}
-            >
-              <TiltCard className="mx-auto max-w-4xl">
-                <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-                  <div className="flex items-center gap-3">
-                    <span className="text-neutral-300 text-sm font-mono">Part #{moduleBPart.id}</span>
-                    <span className="text-neutral-600">·</span>
-                    <span className="text-neutral-400 text-sm">{moduleBPart.lotId}</span>
-                  </div>
-                  <span className="flex items-center gap-1.5 rounded-full bg-amber-500/10 text-amber-400 text-xs px-3 py-1 border border-amber-500/20">
-                    <AlertTriangle className="h-3.5 w-3.5" />
-                    {moduleBPart.moduleB.slope_exceeds ? "Slope exceeds safety threshold" : "Warning — elevated drift"}
-                  </span>
-                </div>
-
-                {/* Physics Curve */}
-                <div className="mb-6">
-                  <h4 className="text-neutral-400 text-xs font-medium mb-3 uppercase tracking-wider">
-                    Leakage Current — Actual vs Arrhenius Prediction
-                  </h4>
-                  <PhysicsCurve data={moduleBPart.timeSeries} unit="µA" />
-                </div>
-
-                {/* Module B metrics */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                  <div className="rounded-lg bg-white/5 p-3 text-center">
-                    <div className="text-neutral-500 text-xs">Predicted 168h</div>
-                    <div className="text-white font-bold font-mono">{moduleBPart.moduleB.final_predicted_168h.toFixed(2)}µA</div>
-                  </div>
-                  <div className="rounded-lg bg-white/5 p-3 text-center">
-                    <div className="text-neutral-500 text-xs">Physics Baseline</div>
-                    <div className="text-white font-bold font-mono">{moduleBPart.moduleB.physics_predicted_168h.toFixed(2)}µA</div>
-                  </div>
-                  <div className="rounded-lg bg-white/5 p-3 text-center">
-                    <div className="text-neutral-500 text-xs">XGB Residual</div>
-                    <div className="text-white font-bold font-mono">
-                      {moduleBPart.moduleB.xgb_residual > 0 ? "+" : ""}{moduleBPart.moduleB.xgb_residual.toFixed(2)}µA
-                    </div>
-                  </div>
-                  <div className={`rounded-lg p-3 text-center ${
-                    moduleBPart.moduleB.slope_exceeds
-                      ? "bg-red-500/10 border border-red-500/20"
-                      : "bg-white/5"
-                  }`}>
-                    <div className={`text-xs ${moduleBPart.moduleB.slope_exceeds ? "text-red-400" : "text-neutral-500"}`}>
-                      Slope Check
-                    </div>
-                    <div className={`font-bold ${moduleBPart.moduleB.slope_exceeds ? "text-red-400" : "text-emerald-400"}`}>
-                      {moduleBPart.moduleB.slope_exceeds ? "EXCEEDS" : "PASS"}
-                    </div>
-                  </div>
-                </div>
-
-                <p className="text-neutral-400 text-sm leading-relaxed">
-                  Predicted slope: <span className="text-white font-mono">{moduleBPart.moduleB.predicted_slope.toFixed(4)}</span>{" "}
-                  vs. lot threshold (µ + 2σ):{" "}
-                  <span className="text-white font-mono">
-                    {(moduleBPart.moduleB.lot_mean_slope + 2 * moduleBPart.moduleB.lot_std_slope).toFixed(4)}
-                  </span>
-                  {moduleBPart.moduleB.slope_exceeds
-                    ? " — XGBoost residual correction pushes predicted drift past the safety threshold. Flagged for early rejection."
-                    : " — drift within normal lot bounds."
-                  }
-                </p>
-              </TiltCard>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Link to full dashboard */}
-        <div className="flex justify-center mt-8">
-          <Link
-            href={activeDemoPart ? `/dashboard/part?id=${activeDemoPart.id}` : "/dashboard"}
-            className="inline-flex items-center gap-2 text-sm text-cyan-400 hover:text-cyan-300 transition group"
-          >
-            View full drill-down for this part
-            <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
-          </Link>
-        </div>
-      </section>
-
-      {/* ──── Math & Methodology ──── */}
-      <section id="math" className="border-t border-white/10 bg-neutral-950 py-20">
-        <div className="mx-auto max-w-6xl px-6">
-          <h2 className="text-2xl md:text-3xl font-bold text-white text-center mb-4">Mathematical Foundations</h2>
-          <p className="text-neutral-500 text-center mb-12 max-w-2xl mx-auto">
-            The core logic driving DriftGuard's anomaly scoring and drift prediction.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6 hover:border-white/20 transition">
-              <h3 className="text-lg font-semibold text-white mb-2">1. Lot-Relative Normalization (MAD)</h3>
-              <p className="text-sm text-neutral-400 mb-4">Instead of standard deviation, which is ruined by large outliers, we use Median Absolute Deviation for dynamic baselining.</p>
-              <div className="bg-black/50 p-4 rounded-lg font-mono text-sm text-emerald-400 overflow-x-auto whitespace-pre">
-                z_robust = 0.6745 * (x - median) / MAD
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6 hover:border-white/20 transition">
-              <h3 className="text-lg font-semibold text-white mb-2">2. ECOD Tail Probability</h3>
-              <p className="text-sm text-neutral-400 mb-4">Empirical Cumulative Distribution Outlier Detection calculates the exact tail probability of seeing a sensor value this extreme.</p>
-              <div className="bg-black/50 p-4 rounded-lg font-mono text-sm text-cyan-400 overflow-x-auto whitespace-pre">
-                F_left(x) = (1/n) * Σ I[xi &lt;= x]
-                O_j(x) = -log(min(F_left, F_right))
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6 hover:border-white/20 transition">
-              <h3 className="text-lg font-semibold text-white mb-2">3. Physics Baseline (Arrhenius)</h3>
-              <p className="text-sm text-neutral-400 mb-4">Using 0h and 24h readings, we solve for the physical drift exponent to project the 168h trajectory based on Arrhenius aging principles.</p>
-              <div className="bg-black/50 p-4 rounded-lg font-mono text-sm text-purple-400 overflow-x-auto whitespace-pre">
-                n = [ln(V_24h) - ln(V_0h)] / [ln(24)]
-                I_168h = I_0 * (168 / 24)^n
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6 hover:border-white/20 transition">
-              <h3 className="text-lg font-semibold text-white mb-2">4. Hybrid ML Residual Correction</h3>
-              <p className="text-sm text-neutral-400 mb-4">An XGBoost regressor predicts the difference between the true 168h value and the physics baseline to minimize Mean Absolute Error (MAE).</p>
-              <div className="bg-black/50 p-4 rounded-lg font-mono text-sm text-amber-400 overflow-x-auto whitespace-pre">
-                I_final = I_physics + f_XGB(residuals)
-                Flag if: slope &gt; μ_slope + (k * σ_slope)
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </section>
-
-      {/* ──── Architectural Reasoning ──── */}
-      <section id="reasoning" className="border-t border-white/10 bg-neutral-950 py-20">
-        <div className="mx-auto max-w-6xl px-6">
-          <h2 className="text-2xl md:text-3xl font-bold text-white text-center mb-4">Architectural Reasoning</h2>
-          <p className="text-neutral-500 text-center mb-12 max-w-2xl mx-auto">
-            Why we engineered it this way (and why we rejected standard approaches).
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            
-            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6 hover:border-white/20 transition">
-              <h3 className="text-lg font-semibold text-white mb-2">Why not Deep Learning?</h3>
-              <p className="text-sm text-neutral-400">
-                A massive neural network acts as a black box. If it spits out "REJECT", QA inspectors have no idea why. By separating the unsupervised outlier detection (Module A) from the physics regression (Module B), every single decision is transparent and mathematically explainable.
-              </p>
-            </div>
-
-            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6 hover:border-white/20 transition">
-              <h3 className="text-lg font-semibold text-white mb-2">Why IF + ECOD?</h3>
-              <p className="text-sm text-neutral-400">
-                We explicitly rejected LOF (Local Outlier Factor) because its O(n²) complexity degrades in high dimensions (590 sensors). We rejected Elliptic Envelope because it assumes Gaussian data, but leakage current is heavily skewed. Isolation Forest and ECOD handle skewed, high-dimensional data perfectly.
-              </p>
-            </div>
-
-            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6 hover:border-white/20 transition">
-              <h3 className="text-lg font-semibold text-white mb-2">Why not Standard Deviation?</h3>
-              <p className="text-sm text-neutral-400">
-                Burn-in lots are small batches. If you have one massive defect (e.g., 500 µA) in a lot, it pulls the Mean average way up and inflates the Standard Deviation, effectively hiding all the smaller, latent anomalies. We use Median Absolute Deviation (MAD) to establish a truly robust baseline.
-              </p>
-            </div>
-
-          </div>
-        </div>
-      </section>
-
-      {/* ──── Resources & Data ──── */}
-      <section id="resources" className="border-t border-white/10 bg-neutral-950 py-20">
-        <div className="mx-auto max-w-5xl px-6">
-          <h2 className="text-2xl md:text-3xl font-bold text-white text-center mb-10">Data & Resources</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6 text-center hover:border-white/20 transition flex flex-col items-center">
-              <Database className="w-8 h-8 text-rose-500 mb-4" />
-              <h3 className="text-lg font-semibold text-white mb-2">UCI SECOM Dataset</h3>
-              <p className="text-sm text-neutral-400">
-                A highly imbalanced semiconductor manufacturing dataset featuring 590 sensor readings per wafer. We layered time-series burn-in simulations (at 0h, 24h, 96h, 168h) on top of this physical data.
-              </p>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6 text-center hover:border-white/20 transition flex flex-col items-center">
-              <Code2 className="w-8 h-8 text-blue-500 mb-4" />
-              <h3 className="text-lg font-semibold text-white mb-2">ISRO PS-26170 Blueprint</h3>
-              <p className="text-sm text-neutral-400">
-                This architecture was engineered specifically to address ISRO's requirement for a dynamic outlier detection system that flags latent defects based on abnormal drift rates.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ──── Tech Stack ──── */}
-      <section id="tech" className="border-t border-white/10 bg-neutral-950 py-20">
-        <div className="mx-auto max-w-5xl px-6">
-          <h2 className="text-2xl font-bold text-white text-center mb-10">Tech Stack</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              { name: "Python", sub: "Core pipeline" },
-              { name: "PyOD", sub: "ECOD + Isolation Forest" },
-              { name: "XGBoost", sub: "Residual regression" },
-              { name: "SHAP", sub: "Explainability" },
-              { name: "scikit-learn", sub: "Preprocessing" },
-              { name: "NumPy / Pandas", sub: "Feature engine" },
-              { name: "Next.js", sub: "QA Dashboard" },
-              { name: "Recharts", sub: "Visualizations" },
-            ].map((t) => (
-              <motion.div
-                key={t.name}
-                initial={{ opacity: 0, y: 10 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-center hover:border-white/20 transition"
-              >
-                <div className="text-white font-semibold text-sm">{t.name}</div>
-                <div className="text-neutral-500 text-xs mt-1">{t.sub}</div>
-              </motion.div>
+              </Link>
             ))}
           </div>
-        </div>
-      </section>
+        </Card>
 
-      {/* ──── Flagged Parts Preview ──── */}
-      <section className="mx-auto max-w-6xl px-6 py-20">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h2 className="text-2xl font-bold text-white">Recently Flagged</h2>
-            <p className="text-neutral-500 text-sm mt-1">
-              Top flagged parts across {lots.length} lots — click to drill down
-            </p>
+        <Card className="!p-5">
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg bg-emerald-50 p-2.5 text-emerald-700"><CheckCircle2 className="h-5 w-5" /></div>
+            <div>
+              <h2 className="font-semibold text-slate-900">System is ready</h2>
+              <p className="text-xs text-slate-500">Static demo data is available</p>
+            </div>
           </div>
-          <Link
-            href="/dashboard"
-            className="text-sm text-cyan-400 hover:text-cyan-300 transition flex items-center gap-1"
-          >
-            View all <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        </div>
-        <div className="overflow-x-auto rounded-xl border border-white/10">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-white/10 bg-white/[0.03]">
-                <th className="px-4 py-3 text-left text-neutral-400 font-medium">Part ID</th>
-                <th className="px-4 py-3 text-left text-neutral-400 font-medium">Lot</th>
-                <th className="px-4 py-3 text-left text-neutral-400 font-medium">IF Score</th>
-                <th className="px-4 py-3 text-left text-neutral-400 font-medium">ECOD Score</th>
-                <th className="px-4 py-3 text-left text-neutral-400 font-medium">Fused</th>
-                <th className="px-4 py-3 text-left text-neutral-400 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {flaggedParts.slice(0, 6).map((p) => (
-                  <tr
-                    key={p.id}
-                    onClick={() => router.push(`/dashboard/part?id=${p.id}`)}
-                    className="border-b border-white/5 hover:bg-white/[0.03] cursor-pointer transition-colors"
-                  >
-                    <td className="px-4 py-3 text-white font-mono text-xs">#{p.id}</td>
-                    <td className="px-4 py-3 text-neutral-400 text-xs">{p.lotId}</td>
-                    <td className="px-4 py-3 text-white font-mono">{p.moduleA.if_score.toFixed(3)}</td>
-                    <td className="px-4 py-3 text-white font-mono">{p.moduleA.ecod_score.toFixed(2)}</td>
-                    <td className="px-4 py-3">
-                      <span className={`font-mono font-bold ${
-                        p.moduleA.fused_score >= 0.75 ? "text-red-400" :
-                        p.moduleA.fused_score >= 0.45 ? "text-amber-400" : "text-emerald-400"
-                      }`}>
-                        {p.moduleA.fused_score.toFixed(3)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3"><Badge status={p.status} showIcon={false} /></td>
-                  </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+          <div className="mt-6 space-y-3 border-t border-slate-100 pt-5 text-sm">
+            <button onClick={() => onNavigate("detection")} className="flex w-full items-center justify-between rounded-lg border border-slate-200 px-3 py-3 text-left hover:bg-slate-50">
+              <span className="flex items-center gap-2 text-slate-700"><Radar className="h-4 w-4 text-cyan-700" /> Inspect flagged parts</span>
+              <ChevronRight className="h-4 w-4 text-slate-400" />
+            </button>
+            <button onClick={() => onNavigate("pipeline")} className="flex w-full items-center justify-between rounded-lg border border-slate-200 px-3 py-3 text-left hover:bg-slate-50">
+              <span className="flex items-center gap-2 text-slate-700"><FlaskConical className="h-4 w-4 text-cyan-700" /> Run a pipeline check</span>
+              <ChevronRight className="h-4 w-4 text-slate-400" />
+            </button>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
 
-      {/* ──── CTA ──── */}
-      <section className="border-t border-white/10 py-24 text-center relative overflow-hidden">
-        <GridBackground />
-        <div className="relative z-10">
-          <Rocket className="h-8 w-8 text-cyan-400 mx-auto mb-4" />
-          <h2 className="text-3xl font-bold text-white mb-3">Ready for mission assurance.</h2>
-          <p className="text-neutral-500 mb-8 max-w-md mx-auto">
-            Built for ISRO&apos;s ESS pipelines — extensible to defense, aviation, and medical device screening.
-          </p>
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 to-indigo-600 px-8 py-3.5 text-white font-medium hover:opacity-90 transition shadow-lg shadow-cyan-500/25"
-          >
-            <LayoutDashboard className="h-4 w-4" /> Launch QA Console
-          </Link>
+function Detection({ part }: { part: NonNullable<ReturnType<typeof useData>["parts"]>[number] | undefined }) {
+  if (!part) return <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-slate-500">No flagged parts are available.</div>;
+  return (
+    <div className="space-y-6">
+      <div>
+        <p className="text-sm font-medium text-cyan-700">Live detection</p>
+        <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900">Part investigation</h1>
+        <p className="mt-2 text-sm text-slate-500">A focused view of the highest-priority flagged component.</p>
+      </div>
+      <Card className="!p-0">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 px-6 py-5">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wider text-slate-400">Detection result</p>
+            <h2 className="mt-1 text-lg font-semibold text-slate-900">Part #{part.id} <span className="font-normal text-slate-400">· {part.lotId}</span></h2>
+          </div>
+          <Badge status={part.status} />
         </div>
-      </section>
+        <div className="grid gap-3 p-6 sm:grid-cols-4">
+          {[
+            ["IF score", part.moduleA.if_score.toFixed(3)],
+            ["ECOD score", part.moduleA.ecod_score.toFixed(2)],
+            ["Fused risk", part.moduleA.fused_score.toFixed(3)],
+            ["Lot percentile", `${part.lotPercentile}th`],
+          ].map(([label, value]) => (
+            <div key={label} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs text-slate-500">{label}</p>
+              <p className="mt-2 font-mono text-lg font-bold text-slate-900">{value}</p>
+            </div>
+          ))}
+        </div>
+        <div className="border-t border-slate-100 px-6 pt-5">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Feature attribution</p>
+          <FeatureAttribution data={part.shapValues} />
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3 px-6 pb-6 pt-4">
+          <p className="text-sm text-slate-500">Review the full physics curve and audit history for this part.</p>
+          <Link href={`/dashboard/part?id=${part.id}`} className="inline-flex items-center gap-2 text-sm font-semibold text-cyan-700 hover:text-cyan-800">Open part details <ArrowRight className="h-4 w-4" /></Link>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+function Pipeline() {
+  const stages = ["Ingest ESS data", "Engineer lot features", "Run IF + ECOD detection", "Forecast drift with XGBoost", "Generate QA explanation"];
+  return (
+    <div className="space-y-6">
+      <div>
+        <p className="text-sm font-medium text-cyan-700">Pipeline status</p>
+        <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900">Screening pipeline</h1>
+        <p className="mt-2 text-sm text-slate-500">Monitor each stage of the DriftGuard analysis workflow.</p>
+      </div>
+      <Card className="!p-6">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-5">
+          <div><h2 className="font-semibold text-slate-900">Latest run</h2><p className="mt-1 text-xs text-slate-500">Static results loaded · ready for review</p></div>
+          <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700"><CircleDot className="h-3.5 w-3.5" /> Ready</span>
+        </div>
+        <div className="mt-6 grid gap-3 md:grid-cols-5">
+          {stages.map((stage, index) => (
+            <div key={stage} className="relative rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <span className="text-xs font-bold text-cyan-700">0{index + 1}</span>
+              <p className="mt-3 text-sm font-medium leading-snug text-slate-800">{stage}</p>
+              {index < stages.length - 1 && <ArrowRight className="absolute -right-3 top-1/2 hidden h-4 w-4 bg-white text-slate-400 md:block" />}
+            </div>
+          ))}
+        </div>
+        <Link href="/dashboard/pipeline" className="mt-6 inline-flex items-center gap-2 rounded-lg bg-cyan-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-cyan-800">Open pipeline controls <ArrowRight className="h-4 w-4" /></Link>
+      </Card>
+    </div>
+  );
+}
+
+export default function DriftGuardWorkspace() {
+  const { parts, lots, metrics } = useData();
+  const [workspace, setWorkspace] = useState<Workspace>("overview");
+  const flaggedParts = useMemo(() => parts.filter((part) => part.status !== "normal"), [parts]);
+  const selectedPart = flaggedParts[0] || parts[0];
+
+  return (
+    <main className="min-h-screen bg-slate-50 text-slate-900">
+      <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 border-r border-slate-200 bg-white lg:flex lg:flex-col">
+        <Link href="/" className="flex items-center gap-3 border-b border-slate-100 px-5 py-5">
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-700"><Radar className="h-5 w-5 text-white" /></span>
+          <span className="text-lg font-bold tracking-tight text-slate-900">DriftGuard</span>
+        </Link>
+        <div className="px-4 py-5">
+          <p className="px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Workspace</p>
+          <nav className="mt-3 space-y-1">
+            {navItems.map(({ id, label, icon: Icon }) => (
+              <button key={id} onClick={() => setWorkspace(id)} className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition ${workspace === id ? "bg-cyan-50 text-cyan-800" : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"}`}>
+                <Icon className="h-4.5 w-4.5" />{label}
+              </button>
+            ))}
+          </nav>
+        </div>
+        <div className="mt-auto border-t border-slate-100 p-4">
+          <Link href="/dashboard" className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50"><SlidersHorizontal className="h-4 w-4" /> Full QA console</Link>
+        </div>
+      </aside>
+
+      <div className="lg:pl-64">
+        <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-5 sm:px-8">
+          <div className="flex items-center gap-2 text-sm text-slate-500"><Search className="h-4 w-4" /> <span className="hidden sm:inline">DriftGuard workspace</span></div>
+          <div className="flex items-center gap-3"><span className="hidden text-xs text-slate-500 sm:inline">Operator session</span><span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-800 text-xs font-bold text-white">MK</span></div>
+        </header>
+        <div className="border-b border-slate-200 bg-white px-5 py-3 lg:hidden">
+          <div className="flex gap-2 overflow-x-auto">
+            {navItems.map(({ id, label }) => <button key={id} onClick={() => setWorkspace(id)} className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold ${workspace === id ? "bg-cyan-50 text-cyan-800" : "text-slate-500"}`}>{label}</button>)}
+          </div>
+        </div>
+        <section className="mx-auto max-w-7xl p-5 sm:p-8">
+          {workspace === "overview" && <Overview totalParts={parts.length} flaggedParts={flaggedParts.length} lots={lots} recall={metrics?.recall ?? 0.984} mae={metrics?.mae_168h ?? 1.8} onNavigate={setWorkspace} />}
+          {workspace === "detection" && <Detection part={selectedPart} />}
+          {workspace === "pipeline" && <Pipeline />}
+        </section>
+      </div>
     </main>
   );
 }

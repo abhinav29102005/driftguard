@@ -18,8 +18,8 @@ export function Card({ variant = "default", className, children, onClick }: Card
       transition={{ type: "spring", stiffness: 300, damping: 20 }}
       onClick={onClick}
       className={cn(
-        "relative rounded-2xl border bg-neutral-900/60 backdrop-blur-xl p-6 shadow-xl transition-colors",
-        variant === "default" && "border-white/10 hover:border-white/20",
+        "relative rounded-xl border bg-white p-6 shadow-[0_6px_18px_rgba(32,76,105,0.05)] transition-colors",
+        variant === "default" && "border-slate-200 hover:border-cyan-200",
         variant === "glow" && "border-cyan-500/30 glow-border",
         onClick && "cursor-pointer",
         className

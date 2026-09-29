@@ -28,17 +28,17 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 z-40 h-screen border-r border-white/10 bg-neutral-950/90 backdrop-blur-xl transition-all duration-300 flex flex-col",
+        "fixed left-0 top-0 z-40 h-screen border-r border-slate-200 bg-white transition-all duration-300 flex flex-col shadow-[4px_0_24px_rgba(32,76,105,0.04)]",
         collapsed ? "w-[72px]" : "w-[260px]"
       )}
     >
       {/* Brand */}
-      <Link href="/" className="flex items-center gap-3 px-5 py-6 border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-indigo-600">
-          <Radar className="h-5 w-5 text-white" />
+      <Link href="/" className="flex items-center gap-3 px-5 py-6 border-b border-slate-100 hover:bg-slate-50 transition-colors cursor-pointer">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cyan-700">
+          <Radar className="h-5 w-5 text-white" strokeWidth={2.5} />
         </div>
         {!collapsed && (
-          <span className="text-white font-bold text-lg tracking-tight">DriftGuard</span>
+          <span className="text-slate-800 font-bold text-lg tracking-tight">DriftGuard</span>
         )}
       </Link>
 
@@ -57,12 +57,12 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               className={cn(
                 "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 group relative",
                 isActive
-                  ? "bg-white/10 text-white"
-                  : "text-neutral-400 hover:text-white hover:bg-white/5"
+                  ? "bg-cyan-50 text-slate-800"
+                  : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
               )}
             >
               {isActive && (
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-cyan-400" />
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-cyan-700" />
               )}
               <item.icon className={cn("h-5 w-5 shrink-0", isActive && "text-cyan-400")} />
               {!collapsed && <span>{item.label}</span>}
@@ -74,7 +74,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       {/* Collapse toggle */}
       <button
         onClick={onToggle}
-        className="flex items-center justify-center gap-2 px-3 py-4 border-t border-white/5 text-neutral-500 hover:text-white transition"
+        className="flex items-center justify-center gap-2 px-3 py-4 border-t border-slate-100 text-slate-400 hover:text-slate-700 transition"
       >
         {collapsed ? <PanelLeft className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
         {!collapsed && <span className="text-xs">Collapse</span>}

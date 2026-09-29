@@ -9,7 +9,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <div className="min-h-screen bg-neutral-950">
+    <div className="light-shell min-h-screen">
       <Sidebar collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
       <div
         className={cn(
@@ -18,7 +18,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         )}
       >
         <Topbar />
-        <main className="p-8">{children}</main>
+        <main className="p-5 sm:p-8 max-w-[1600px]">{children}</main>
       </div>
     </div>
   );

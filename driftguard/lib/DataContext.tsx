@@ -51,7 +51,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setParts(data.parts || []);
       setOverrides(data.overrides || []);
       setMetrics(data.metrics || null);
-      setMode(sourceMode);
+      // live_pipeline is a transient loading state. Once complete, expose the
+      // returned data as live results so screens do not remain in a spinner state.
+      setMode(sourceMode === "live_pipeline" ? "live_results" : sourceMode);
     } catch (e) {
       console.error(e);
       if (sourceMode === "live_pipeline") toast.error("Pipeline failed", { id: "pipeline" });
@@ -59,7 +61,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       // Fallback to static if live API fails
       if (sourceMode !== "static") {
         toast.error("Backend offline. Falling back to static data.");
-        fetchResults("static");
+        await fetchResults("static");
       } else {
         setMode("error");
       }

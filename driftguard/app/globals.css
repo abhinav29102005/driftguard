@@ -2,7 +2,7 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #183047;
 }
 
 @theme inline {
@@ -25,17 +25,10 @@
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
 /* Custom scrollbar */
@@ -44,19 +37,19 @@ body {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: rgba(23, 23, 23, 0.4);
+  background: #edf3f8;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(34, 211, 238, 0.3);
+  background: #b9cddd;
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(34, 211, 238, 0.5);
+  background: #7caac4;
 }
 
 /* Glass utility */
 .glass {
-  background: rgba(23, 23, 23, 0.6);
+  background: rgba(255, 255, 255, 0.82);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 }
@@ -64,12 +57,105 @@ body {
 /* Glow border */
 .glow-border {
   box-shadow:
-    0 0 12px rgba(34, 211, 238, 0.15),
-    0 0 30px rgba(34, 211, 238, 0.08),
-    inset 0 0 12px rgba(34, 211, 238, 0.05);
+    0 8px 24px rgba(24, 103, 142, 0.1),
+    0 0 0 1px rgba(34, 168, 190, 0.18);
 }
 
 /* Thin scrollbar utility */
 .scrollbar-thin::-webkit-scrollbar {
   height: 4px;
 }
+
+/* Shared light visual language for legacy utility classes. */
+.light-shell {
+  background: #ffffff;
+}
+
+.light-shell .bg-neutral-950,
+.light-shell .bg-neutral-950\/90,
+.light-shell .bg-neutral-950\/80 {
+  background-color: #ffffff;
+}
+
+.light-shell .bg-neutral-900\/60 {
+  background-color: #ffffff;
+}
+
+.light-shell .text-white { color: #183047; }
+.light-shell .text-neutral-300 { color: #456178; }
+.light-shell .text-neutral-400 { color: #526a7d; }
+.light-shell .text-neutral-500 { color: #60788d; }
+.light-shell .text-neutral-600 { color: #71879a; }
+.light-shell .border-white\/5 { border-color: #e7eef4; }
+.light-shell .border-white\/10 { border-color: #dce7ef; }
+.light-shell .border-white\/20 { border-color: #c8dbe7; }
+.light-shell .bg-white\/5 { background-color: #f8fafc; }
+.light-shell .bg-white\/10 { background-color: #eef5f8; }
+.light-shell .hover\:bg-white\/5:hover { background-color: #edf5f7; }
+.light-shell .hover\:bg-white\/10:hover { background-color: #e3eff3; }
+
+/* Professional console defaults: restrained contrast, consistent surfaces, clear focus. */
+.light-shell,
+.landing-page {
+  --ui-ink: #183047;
+  --ui-muted: #60788d;
+  --ui-subtle: #7890a3;
+  --ui-line: #dce7ef;
+  --ui-surface: #ffffff;
+}
+
+.light-shell .rounded-2xl,
+.landing-page .rounded-2xl { border-radius: 0.875rem; }
+.light-shell .rounded-xl,
+.landing-page .rounded-xl { border-radius: 0.625rem; }
+.light-shell .shadow-xl,
+.light-shell .shadow-2xl,
+.landing-page .shadow-xl,
+.landing-page .shadow-2xl { box-shadow: 0 8px 24px rgba(32, 76, 105, 0.07); }
+.light-shell input:focus,
+.light-shell textarea:focus,
+.landing-page input:focus,
+.landing-page textarea:focus { box-shadow: 0 0 0 3px rgba(27, 156, 174, 0.12); }
+.light-shell button:focus-visible,
+.landing-page a:focus-visible,
+.landing-page button:focus-visible {
+  outline: 3px solid rgba(27, 156, 174, 0.25);
+  outline-offset: 2px;
+}
+
+.landing-page {
+  background: #ffffff;
+}
+
+.landing-page .bg-black,
+.landing-page .bg-black\/70,
+.landing-page .bg-neutral-950,
+.landing-page .bg-neutral-950\/90,
+.landing-page .bg-neutral-950\/80 {
+  background-color: #ffffff;
+}
+
+.landing-page .bg-neutral-900\/60 {
+  background-color: #ffffff;
+}
+
+.landing-page .bg-white\/\[0\.03\],
+.landing-page .bg-white\/5 { background-color: #f8fafc; }
+.landing-page .bg-black\/40,
+.landing-page .bg-black\/50 { background-color: #f8fafc; }
+.landing-page .border-y,
+.landing-page .border-t { border-color: #e5edf2; }
+
+.landing-page .text-white { color: #183047; }
+.landing-page .text-neutral-300 { color: #456178; }
+.landing-page .text-neutral-400 { color: #526a7d; }
+.landing-page .text-neutral-500 { color: #60788d; }
+.landing-page .text-neutral-600 { color: #71879a; }
+.landing-page .border-white\/10 { border-color: #dce7ef; }
+.landing-page .border-white\/20 { border-color: #c8dbe7; }
+.landing-page .bg-white\/5 { background-color: #f1f6f9; }
+.landing-page .hover\:text-white:hover { color: #147d8d; }
+.landing-page .hover\:border-white\/20:hover { border-color: #b9d9e4; }
+.landing-page .animate-spotlight { opacity: 0.35; }
+.landing-page .backdrop-blur-xl,
+.landing-page .backdrop-blur-lg { backdrop-filter: blur(10px); }

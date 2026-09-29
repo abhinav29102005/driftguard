@@ -23,13 +23,13 @@ export function Topbar() {
   const crumbs = getBreadcrumb(pathname);
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between border-b border-white/5 bg-neutral-950/80 backdrop-blur-xl px-8 py-4">
+    <header className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200 bg-white/80 backdrop-blur-xl px-8 py-4">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm">
         {crumbs.map((c, i) => (
           <React.Fragment key={i}>
-            {i > 0 && <span className="text-neutral-600">/</span>}
-            <span className={i === crumbs.length - 1 ? "text-white font-medium" : "text-neutral-500"}>
+            {i > 0 && <span className="text-slate-300">/</span>}
+            <span className={i === crumbs.length - 1 ? "text-slate-800 font-medium" : "text-slate-500"}>
               {c}
             </span>
           </React.Fragment>
@@ -40,22 +40,22 @@ export function Topbar() {
       {/* Right side */}
       <div className="flex items-center gap-4">
         {/* Data Source Selector */}
-        <div className="flex items-center bg-white/5 rounded-lg border border-white/10 p-1">
+        <div className="flex items-center bg-slate-50 rounded-lg border border-slate-200 p-1">
           <button 
             onClick={() => setMode("static")}
-            className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md transition ${mode === "static" ? "bg-white/10 text-white" : "text-neutral-500 hover:text-neutral-300"}`}
+            className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md transition ${mode === "static" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
           >
             <Database className="w-3 h-3" /> Static
           </button>
           <button 
             onClick={() => setMode("live_results")}
-            className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md transition ${mode === "live_results" ? "bg-white/10 text-emerald-400" : "text-neutral-500 hover:text-neutral-300"}`}
+            className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md transition ${mode === "live_results" ? "bg-white text-emerald-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
           >
             <Activity className="w-3 h-3" /> API Results
           </button>
           <button 
             onClick={() => setMode("live_pipeline")}
-            className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md transition ${mode === "live_pipeline" ? "bg-white/10 text-cyan-400" : "text-neutral-500 hover:text-neutral-300"}`}
+            className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md transition ${mode === "live_pipeline" ? "bg-white text-cyan-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
           >
             <Play className="w-3 h-3" /> Run Pipeline
           </button>
@@ -63,17 +63,17 @@ export function Topbar() {
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <input
             type="text"
             placeholder="Search parts..."
-            className="h-9 w-52 rounded-lg bg-white/5 border border-white/10 pl-9 pr-3 text-sm text-neutral-300 placeholder:text-neutral-600 focus:outline-none focus:border-cyan-500/40 transition"
+            className="h-9 w-52 rounded-lg bg-slate-50 border border-slate-200 pl-9 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-cyan-500/40 transition"
           />
         </div>
 
         {/* Notifications */}
         <button className="relative p-2 rounded-lg hover:bg-white/5 transition">
-          <Bell className="h-5 w-5 text-neutral-400" />
+          <Bell className="h-5 w-5 text-slate-500" />
           <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
             3
           </span>
